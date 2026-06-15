@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-stone-800 antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  /* Delays para staggering */
+  .delay-75  { animation-delay: 75ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+
+  /* Hero mesh gradient animado */
+  .hero-bg {
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%,   rgba(197,208,220,0.45) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 90% 10%,  rgba(232,85,53,0.12)  0%, transparent 60%),
+      radial-gradient(ellipse 70% 40% at 50% 100%, rgba(61,79,99,0.07)   0%, transparent 70%),
+      #f2f4f7;
+  }
+
+  /* Shimmer para skeleton */
+  .shimmer-bg {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Gradiente de texto */
+  .text-gradient {
+    background: linear-gradient(135deg, #3d4f63 0%, #e85535 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Línea decorativa coral */
+  .coral-accent-line {
+    background: linear-gradient(90deg, #e85535, #ff9d87);
+  }
+}
