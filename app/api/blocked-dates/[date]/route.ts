@@ -9,17 +9,19 @@ function isAdminAuthorized(request: NextRequest): boolean {
 // DELETE — desbloquea un día (solo admin)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { date: string } }
+  { params }: { params: Promise<{ date: string }> }
 ) {
   if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const { date } = await params;
+
   try {
     const { error } = await getSupabaseAdmin()
       .from("blocked_dates")
       .delete()
-      .eq("date", params.date);
+      .eq("date", date);
 
     if (error) throw error;
 
