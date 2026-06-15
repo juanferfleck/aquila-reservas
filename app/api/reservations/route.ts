@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 import { MAX_PER_SLOT } from "@/lib/constants";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -8,6 +8,47 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function isAdminAuthorized(request: NextRequest): boolean {
+  const password = request.headers.get("x-admin-password");
+  return !!process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD;
+}
+
+// ── GET: listar reservas (admin) ──────────────────────────────
+export async function GET(request: NextRequest) {
+  if (!isAdminAuthorized(request)) {
+    return errorResponse("No autorizado", 401);
+  }
+
+  const { searchParams } = new URL(request.url);
+  const filter = searchParams.get("filter"); // upcoming | all
+  const status = searchParams.get("status"); // confirmed | cancelled | attended
+
+  const supabase = getSupabaseAdmin();
+  const today = new Date().toISOString().split("T")[0];
+
+  let query = supabase
+    .from("reservations")
+    .select("*")
+    .order("date", { ascending: true })
+    .order("time_slot", { ascending: true });
+
+  if (filter === "upcoming") {
+    query = query.eq("status", "confirmed").gte("date", today);
+  } else if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching reservations:", error);
+    return errorResponse("Error al obtener reservas", 500);
+  }
+
+  return NextResponse.json({ reservations: data ?? [] });
+}
+
+// ── POST: crear reserva ───────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -34,6 +75,36 @@ export async function POST(request: NextRequest) {
     if (blocked) {
       return errorResponse(
         `No hay clases ese día: ${blocked.reason ?? "Clase suspendida"}. Por favor elegí otra fecha.`,
+        409
+      );
+    }
+
+    // Bloquear si ya asistió a una clase de prueba (por email)
+    const { data: attendedByEmail } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("email", cleanEmail)
+      .eq("status", "attended")
+      .maybeSingle();
+
+    if (attendedByEmail) {
+      return errorResponse(
+        "Ya asististe a una clase de prueba en Aquila Evolución. ¡Escribinos por WhatsApp para más info!",
+        409
+      );
+    }
+
+    // Bloquear si ya asistió a una clase de prueba (por WhatsApp)
+    const { data: attendedByPhone } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("whatsapp", whatsapp.trim())
+      .eq("status", "attended")
+      .maybeSingle();
+
+    if (attendedByPhone) {
+      return errorResponse(
+        "Este número ya asistió a una clase de prueba. ¡Escribinos por WhatsApp para más info!",
         409
       );
     }
