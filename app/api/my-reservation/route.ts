@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
+import { MAX_PER_SLOT } from "@/lib/constants";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -8,7 +9,6 @@ function err(msg: string, status: number) {
 }
 
 // GET /api/my-reservation?email=...
-// Devuelve la reserva activa futura del usuario (mínimo de datos)
 export async function GET(request: NextRequest) {
   const email = new URL(request.url).searchParams.get("email")?.toLowerCase().trim();
 
@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
 }
 
 // PATCH /api/my-reservation
-// Cambia la fecha y horario de la reserva activa del usuario
 export async function PATCH(request: NextRequest) {
   const body: { email?: string; new_date?: string; new_time_slot?: string } =
     await request.json();
@@ -63,7 +62,6 @@ export async function PATCH(request: NextRequest) {
     return err("No encontramos una reserva activa con ese email.", 404);
   }
 
-  // Evitar cambiar al mismo turno
   if (reservation.date === new_date && reservation.time_slot === new_time_slot) {
     return err("Ya tenés ese día y horario reservado.", 409);
   }
@@ -82,7 +80,7 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  // Verificar cupo del nuevo turno (no contar al propio usuario en su turno actual)
+  // Verificar cupo del nuevo turno
   const { count } = await supabase
     .from("reservations")
     .select("*", { count: "exact", head: true })
@@ -91,14 +89,12 @@ export async function PATCH(request: NextRequest) {
     .eq("status", "confirmed")
     .neq("id", reservation.id);
 
-  const { MAX_PER_SLOT } = await import("@/lib/constants");
-
   if ((count ?? 0) >= MAX_PER_SLOT) {
     return err("Ese turno ya está completo. Por favor elegí otro horario.", 409);
   }
 
-  // Actualizar la reserva
-  const { data: updated, error } = await supabase
+  // Actualizar con service role para bypassear RLS
+  const { data: updated, error } = await getSupabaseAdmin()
     .from("reservations")
     .update({ date: new_date, time_slot: new_time_slot })
     .eq("id", reservation.id)
