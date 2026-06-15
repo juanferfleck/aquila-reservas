@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
+type RouteContext = { params: Promise<{ date: string }> };
+
 function isAdminAuthorized(request: NextRequest): boolean {
   const password = request.headers.get("x-admin-password");
   return !!process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD;
 }
 
-// DELETE — desbloquea un día (solo admin)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ date: string }> }
-) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { date } = await params;
+  const { date } = await context.params;
 
   try {
     const { error } = await getSupabaseAdmin()
