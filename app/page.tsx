@@ -1,5 +1,6 @@
 import Image from "next/image";
 import BookingWizard from "@/components/BookingWizard";
+import ChangeReservationFlow from "@/components/ChangeReservationFlow";
 import { WHATSAPP_NUMBER, CONTACT_EMAIL } from "@/lib/constants";
 import { ShieldCheck, Users, Sparkles } from "lucide-react";
 
@@ -85,8 +86,13 @@ export default function Home() {
             <BookingWizard />
           </div>
 
+          {/* Cambiar turno */}
+          <div className="mt-5 animate-fade-in delay-500">
+            <ChangeReservationFlow />
+          </div>
+
           {/* Footer */}
-          <div className="mt-6 flex flex-col items-center gap-1 animate-fade-in delay-500">
+          <div className="mt-4 flex flex-col items-center gap-1 animate-fade-in delay-500">
             <p className="text-xs text-stone-400 text-center">
               ¿Dudas? Contactanos por{" "}
               <a
