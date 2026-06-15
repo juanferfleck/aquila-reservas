@@ -79,34 +79,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Bloquear si ya asistió a una clase de prueba (por email)
-    const { data: attendedByEmail } = await supabase
+    // Bloquear si ya asistió o no asistió (ya usó su clase de prueba) — por email
+    const { data: closedByEmail } = await supabase
       .from("reservations")
-      .select("id")
+      .select("id, status")
       .eq("email", cleanEmail)
-      .eq("status", "attended")
+      .in("status", ["attended", "no_show"])
       .maybeSingle();
 
-    if (attendedByEmail) {
-      return errorResponse(
-        "Ya asististe a una clase de prueba en Aquila Evolución. ¡Escribinos por WhatsApp para más info!",
-        409
-      );
+    if (closedByEmail) {
+      const msg = closedByEmail.status === "attended"
+        ? "Ya asististe a tu clase de prueba en Aquila Evolución. ¡Escribinos por WhatsApp para más info!"
+        : "Ya contábamos con tu lugar en una clase de prueba. Para más info, escribinos por WhatsApp.";
+      return errorResponse(msg, 409);
     }
 
-    // Bloquear si ya asistió a una clase de prueba (por WhatsApp)
-    const { data: attendedByPhone } = await supabase
+    // Bloquear si ya asistió o no asistió — por WhatsApp
+    const { data: closedByPhone } = await supabase
       .from("reservations")
-      .select("id")
+      .select("id, status")
       .eq("whatsapp", whatsapp.trim())
-      .eq("status", "attended")
+      .in("status", ["attended", "no_show"])
       .maybeSingle();
 
-    if (attendedByPhone) {
-      return errorResponse(
-        "Este número ya asistió a una clase de prueba. ¡Escribinos por WhatsApp para más info!",
-        409
-      );
+    if (closedByPhone) {
+      const msg = closedByPhone.status === "attended"
+        ? "Este número ya asistió a una clase de prueba. ¡Escribinos por WhatsApp para más info!"
+        : "Este número ya tuvo una clase de prueba reservada. Para más info, escribinos por WhatsApp.";
+      return errorResponse(msg, 409);
     }
 
     // Bloquear si el email ya tiene reserva activa futura

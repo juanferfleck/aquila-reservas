@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const body: { status?: string } = await request.json();
   const { status } = body;
 
-  const VALID_STATUSES = ["confirmed", "cancelled", "attended"];
+  const VALID_STATUSES = ["confirmed", "cancelled", "attended", "no_show"];
   if (!status || !VALID_STATUSES.includes(status)) {
     return NextResponse.json(
       { error: "Estado inválido. Debe ser: confirmed, cancelled o attended." },

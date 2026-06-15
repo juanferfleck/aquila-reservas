@@ -6,7 +6,7 @@ import { es } from "date-fns/locale";
 import {
   MessageCircle, XCircle, CheckCircle2, Loader2,
   CalendarDays, User, Mail, Phone, RefreshCw,
-  ChevronRight, AlertTriangle,
+  ChevronRight, AlertTriangle, UserX,
 } from "lucide-react";
 import clsx from "clsx";
 import type { Reservation } from "@/lib/supabase";
@@ -16,13 +16,14 @@ const SLOT_LABELS: Record<string, string> = Object.fromEntries(
   [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS].map((s) => [s.id, s.label])
 );
 
-type Filter = "upcoming" | "all" | "cancelled" | "attended";
+type Filter = "upcoming" | "all" | "cancelled" | "attended" | "no_show";
 
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: "upcoming",  label: "Próximas" },
-  { id: "all",       label: "Todas"    },
-  { id: "cancelled", label: "Canceladas" },
-  { id: "attended",  label: "Asistidas" },
+  { id: "upcoming",  label: "Próximas"     },
+  { id: "all",       label: "Todas"        },
+  { id: "cancelled", label: "Canceladas"   },
+  { id: "attended",  label: "Asistidas"    },
+  { id: "no_show",   label: "No asistieron" },
 ];
 
 function toWhatsAppUrl(number: string, name: string, date: string, slot: string): string {
@@ -56,6 +57,12 @@ function StatusBadge({ status }: { status: Reservation["status"] }) {
         Cancelada
       </span>
     );
+  if (status === "no_show")
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+        No asistió
+      </span>
+    );
   return (
     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
       Asistió ✓
@@ -63,14 +70,15 @@ function StatusBadge({ status }: { status: Reservation["status"] }) {
   );
 }
 
+type ActionStatus = "confirmed" | "cancelled" | "attended" | "no_show";
 type Props = { password: string };
 
 export default function ReservationsDashboard({ password }: Props) {
-  const [filter, setFilter]         = useState<Filter>("upcoming");
+  const [filter, setFilter]             = useState<Filter>("upcoming");
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]           = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
-  const [error, setError]           = useState("");
+  const [error, setError]               = useState("");
 
   const fetchReservations = useCallback(
     async (f: Filter) => {
@@ -86,10 +94,7 @@ export default function ReservationsDashboard({ password }: Props) {
           headers: { "x-admin-password": password },
         });
 
-        if (!res.ok) {
-          setError("Error al cargar las reservas.");
-          return;
-        }
+        if (!res.ok) { setError("Error al cargar las reservas."); return; }
 
         const data: { reservations: Reservation[] } = await res.json();
         setReservations(data.reservations);
@@ -104,10 +109,7 @@ export default function ReservationsDashboard({ password }: Props) {
     fetchReservations(filter);
   }, [filter, fetchReservations]);
 
-  const changeStatus = async (
-    id: string,
-    status: "confirmed" | "cancelled" | "attended"
-  ) => {
+  const changeStatus = async (id: string, status: ActionStatus) => {
     setActionLoading((prev) => ({ ...prev, [id]: true }));
     try {
       const res = await fetch(`/api/reservations/${id}`, {
@@ -121,7 +123,6 @@ export default function ReservationsDashboard({ password }: Props) {
 
       if (!res.ok) return;
 
-      // Actualizar en local sin refetch
       setReservations((prev) =>
         prev.map((r) => (r.id === id ? { ...r, status } : r))
       );
@@ -130,13 +131,20 @@ export default function ReservationsDashboard({ password }: Props) {
     }
   };
 
-  // Agrupar por fecha para mostrar encabezados
   const grouped = reservations.reduce<Record<string, Reservation[]>>((acc, r) => {
     if (!acc[r.date]) acc[r.date] = [];
     acc[r.date].push(r);
     return acc;
   }, {});
   const sortedDates = Object.keys(grouped).sort();
+
+  const emptyMsg: Record<Filter, string> = {
+    upcoming:  "No hay reservas próximas.",
+    all:       "No hay reservas registradas.",
+    cancelled: "No hay reservas canceladas.",
+    attended:  "Nadie marcado como asistido aún.",
+    no_show:   "Sin inasistencias registradas.",
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -179,18 +187,12 @@ export default function ReservationsDashboard({ password }: Props) {
       ) : reservations.length === 0 ? (
         <div className="text-center py-12">
           <CalendarDays className="w-10 h-10 text-aquila-200 mx-auto mb-3" />
-          <p className="text-sm text-stone-400 font-medium">
-            {filter === "upcoming"  ? "No hay reservas próximas." :
-             filter === "cancelled" ? "No hay reservas canceladas." :
-             filter === "attended"  ? "Nadie marcado como asistido aún." :
-             "No hay reservas registradas."}
-          </p>
+          <p className="text-sm text-stone-400 font-medium">{emptyMsg[filter]}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-5">
           {sortedDates.map((date) => (
             <div key={date}>
-              {/* Encabezado de fecha */}
               <div className="flex items-center gap-2 mb-2">
                 <span
                   className={clsx(
@@ -210,7 +212,6 @@ export default function ReservationsDashboard({ password }: Props) {
                 </span>
               </div>
 
-              {/* Cards de reservas */}
               <div className="flex flex-col gap-2">
                 {grouped[date].map((r) => (
                   <ReservationCard
@@ -234,41 +235,37 @@ export default function ReservationsDashboard({ password }: Props) {
 type CardProps = {
   reservation: Reservation;
   isLoading: boolean;
-  onChangeStatus: (id: string, status: "confirmed" | "cancelled" | "attended") => void;
+  onChangeStatus: (id: string, status: ActionStatus) => void;
 };
 
 function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProps) {
   const [expanded, setExpanded] = useState(false);
-  const slotLabel = SLOT_LABELS[r.time_slot] ?? r.time_slot;
+  const slotLabel  = SLOT_LABELS[r.time_slot] ?? r.time_slot;
   const isPastDate = isPast(parseISO(r.date)) && !isToday(parseISO(r.date));
 
   return (
     <div
       className={clsx(
         "rounded-2xl border transition-all duration-200",
-        r.status === "cancelled"
-          ? "bg-stone-50 border-stone-100 opacity-75"
-          : r.status === "attended"
-          ? "bg-emerald-50/50 border-emerald-100"
-          : isPastDate
-          ? "bg-aquila-50/50 border-aquila-100/60"
-          : "bg-white border-aquila-100"
+        r.status === "cancelled" ? "bg-stone-50 border-stone-100 opacity-75"    :
+        r.status === "attended"  ? "bg-emerald-50/50 border-emerald-100"         :
+        r.status === "no_show"   ? "bg-amber-50/50 border-amber-100"             :
+        isPastDate               ? "bg-aquila-50/50 border-aquila-100/60"        :
+                                   "bg-white border-aquila-100"
       )}
     >
-      {/* Fila principal */}
+      {/* Fila principal — toca para expandir */}
       <button
         className="w-full flex items-center gap-3 px-4 py-3 text-left"
         onClick={() => setExpanded((v) => !v)}
       >
-        {/* Avatar inicial */}
         <div
           className={clsx(
             "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0",
-            r.status === "attended"
-              ? "bg-emerald-100 text-emerald-700"
-              : r.status === "cancelled"
-              ? "bg-stone-100 text-stone-400"
-              : "bg-aquila-100 text-aquila-700"
+            r.status === "attended"  ? "bg-emerald-100 text-emerald-700" :
+            r.status === "no_show"   ? "bg-amber-100 text-amber-700"     :
+            r.status === "cancelled" ? "bg-stone-100 text-stone-400"     :
+                                       "bg-aquila-100 text-aquila-700"
           )}
         >
           {r.name.charAt(0).toUpperCase()}
@@ -293,7 +290,8 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
       {/* Panel expandido */}
       {expanded && (
         <div className="px-4 pb-4 border-t border-aquila-100/60 pt-3 flex flex-col gap-3">
-          {/* Datos de contacto */}
+
+          {/* Datos */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-xs text-stone-500">
               <Mail className="w-3.5 h-3.5 text-aquila-400 shrink-0" />
@@ -323,7 +321,8 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {/* WhatsApp — siempre disponible */}
+
+              {/* WhatsApp — siempre */}
               <a
                 href={toWhatsAppUrl(r.whatsapp, r.name, r.date, r.time_slot)}
                 target="_blank"
@@ -334,26 +333,36 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
                 Escribir por WhatsApp
               </a>
 
-              {/* Acciones según estado */}
+              {/* Confirmada: marcar asistencia + cancelar */}
               {r.status === "confirmed" && (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => onChangeStatus(r.id, "attended")}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all active:scale-95"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Ya asistió
-                  </button>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => onChangeStatus(r.id, "attended")}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all active:scale-95"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Ya asistió
+                    </button>
+                    <button
+                      onClick={() => onChangeStatus(r.id, "no_show")}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all active:scale-95"
+                    >
+                      <UserX className="w-3.5 h-3.5" />
+                      No asistió
+                    </button>
+                  </div>
                   <button
                     onClick={() => onChangeStatus(r.id, "cancelled")}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-coral-500 hover:bg-coral-600 text-white text-xs font-bold transition-all active:scale-95"
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-stone-200 text-stone-500 text-xs font-medium hover:bg-stone-50 transition-all active:scale-95"
                   >
                     <XCircle className="w-3.5 h-3.5" />
-                    Cancelar
+                    Cancelar (la persona lo pidió)
                   </button>
-                </div>
+                </>
               )}
 
+              {/* Cancelada: restaurar */}
               {r.status === "cancelled" && (
                 <button
                   onClick={() => onChangeStatus(r.id, "confirmed")}
@@ -364,9 +373,12 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
                 </button>
               )}
 
-              {r.status === "attended" && (
+              {/* Asistió o no asistió: bloqueada, info */}
+              {(r.status === "attended" || r.status === "no_show") && (
                 <p className="text-center text-xs text-stone-400 py-1">
-                  Esta persona ya asistió — no puede reservar nuevamente.
+                  {r.status === "attended"
+                    ? "Ya asistió — no puede reservar nuevamente."
+                    : "Marcada como inasistencia — no puede reservar nuevamente."}
                 </p>
               )}
             </div>

@@ -34,7 +34,7 @@ export type Reservation = {
   date: string;
   time_slot: string;
   created_at: string;
-  status: "confirmed" | "cancelled" | "attended";
+  status: "confirmed" | "cancelled" | "attended" | "no_show";
 };
 
 export type BlockedDate = {
