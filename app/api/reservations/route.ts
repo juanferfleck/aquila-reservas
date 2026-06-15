@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 import { MAX_PER_SLOT } from "@/lib/constants";
+import { sendConfirmation } from "@/lib/whatsapp";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -173,6 +174,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Enviar confirmación por WhatsApp (fire & forget — no bloquea la respuesta)
+    sendConfirmation(data).catch(console.error);
 
     return NextResponse.json({ reservation: data }, { status: 201 });
   } catch (err) {

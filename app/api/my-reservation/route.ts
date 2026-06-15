@@ -94,9 +94,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Actualizar con service role para bypassear RLS
+  // Resetear flags de recordatorio para que se envíen en la nueva fecha
   const { data: updated, error } = await getSupabaseAdmin()
     .from("reservations")
-    .update({ date: new_date, time_slot: new_time_slot })
+    .update({ date: new_date, time_slot: new_time_slot, reminder_24h_sent: false, reminder_2h_sent: false })
     .eq("id", reservation.id)
     .select("id, name, date, time_slot")
     .single();
