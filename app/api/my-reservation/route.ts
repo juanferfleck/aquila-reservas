@@ -80,6 +80,25 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  // Verificar que el turno no haya pasado y la regla de 12hs para turnos de mañana
+  const MORNING_SLOTS = ["07:00", "08:00"];
+  const slotDateTime = new Date(`${new_date}T${new_time_slot}:00-03:00`);
+  const now = new Date();
+
+  if (slotDateTime <= now) {
+    return err("Ese turno ya pasó. Por favor elegí otro horario.", 409);
+  }
+
+  if (MORNING_SLOTS.includes(new_time_slot)) {
+    const hoursUntil = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (hoursUntil < 12) {
+      return err(
+        "Los turnos de mañana deben reservarse con al menos 12 horas de anticipación.",
+        409
+      );
+    }
+  }
+
   // Verificar cupo del nuevo turno
   const { count } = await supabase
     .from("reservations")

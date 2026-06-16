@@ -23,6 +23,22 @@ function getSlotsForDate(date: Date) {
   return getDay(date) === 6 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
 }
 
+const MORNING_SLOTS = new Set(["07:00", "08:00"]);
+
+function slotUnavailableReason(date: Date, slotId: string): "past" | "too_soon" | null {
+  const [hours, minutes] = slotId.split(":").map(Number);
+  const slotDateTime = new Date(
+    date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, 0, 0
+  );
+  const now = new Date();
+  if (slotDateTime <= now) return "past";
+  if (MORNING_SLOTS.has(slotId)) {
+    const hoursUntil = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (hoursUntil < 12) return "too_soon";
+  }
+  return null;
+}
+
 export default function TimeSlotPicker({ date, selected, onSelect }: Props) {
   const [avail, setAvail]   = useState<AvailabilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +88,8 @@ export default function TimeSlotPicker({ date, selected, onSelect }: Props) {
         <div className="grid grid-cols-2 gap-3">
           {slots.map((slot, i) => {
             const spots      = getSpots(slot.id);
-            const isFull     = spots <= 0;
+            const reason     = slotUnavailableReason(date, slot.id);
+            const isFull     = spots <= 0 || reason !== null;
             const isSelected = selected === slot.id;
 
             return (
@@ -104,7 +121,10 @@ export default function TimeSlotPicker({ date, selected, onSelect }: Props) {
                       isSelected ? "text-coral-100" : "text-stone-400"
                     )}
                   >
-                    {isFull ? "Completo" : spots === 1 ? "¡Último lugar!" : `${spots} lugares`}
+                    {reason === "past" ? "Ya pasó" :
+                     reason === "too_soon" ? "+12hs previas" :
+                     spots <= 0 ? "Completo" :
+                     spots === 1 ? "¡Último lugar!" : `${spots} lugares`}
                   </span>
                 </div>
               </button>

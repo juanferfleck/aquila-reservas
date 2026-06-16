@@ -152,7 +152,7 @@ export default function CalendarPicker({ selected, onSelect }: Props) {
       )}
 
       <p className="text-xs text-stone-400 mt-4 text-center">
-        Domingos sin clases · Sábados solo 8 AM
+        Domingos sin clases · Sábados solo 08:00
       </p>
     </div>
   );

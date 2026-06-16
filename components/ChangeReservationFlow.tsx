@@ -258,7 +258,7 @@ export default function ChangeReservationFlow() {
               <div className="animate-slide-down">
                 <p className="text-[10px] font-bold text-aquila-500 uppercase tracking-wider mb-3">
                   Elegí el nuevo horario
-                  {isSaturday && <span className="text-stone-400 normal-case font-normal"> · Solo 8 AM los sábados</span>}
+                  {isSaturday && <span className="text-stone-400 normal-case font-normal"> · Solo 08:00 los sábados</span>}
                 </p>
                 <TimeSlotPicker
                   date={newDate}
