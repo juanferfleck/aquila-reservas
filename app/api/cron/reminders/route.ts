@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Recordatorio 2h: enviar cuando falte entre 1 y 3 horas
-    if (!r.reminder_2h_sent && diffHours >= 1 && diffHours < 3) {
+    // Recordatorio 1h: enviar cuando falte entre 0.5 y 1.5 horas
+    if (!r.reminder_2h_sent && diffHours >= 0.5 && diffHours < 1.5) {
       const ok = await sendReminder2h(r);
       if (ok) {
         await supabase
