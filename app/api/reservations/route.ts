@@ -178,7 +178,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear reserva
+    // Si el email tiene una reserva cancelada, reactivarla en lugar de crear un duplicado
+    const { data: cancelled } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("email", cleanEmail)
+      .eq("status", "cancelled")
+      .maybeSingle();
+
+    if (cancelled) {
+      const { data, error } = await getSupabaseAdmin()
+        .from("reservations")
+        .update({
+          name:              name.trim(),
+          whatsapp:          whatsapp.trim(),
+          date,
+          time_slot,
+          status:            "confirmed",
+          reminder_24h_sent: false,
+          reminder_2h_sent:  false,
+        })
+        .eq("id", cancelled.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      sendConfirmation(data).catch(console.error);
+      return NextResponse.json({ reservation: data }, { status: 201 });
+    }
+
+    // Crear reserva nueva
     const { data, error } = await supabase
       .from("reservations")
       .insert({
