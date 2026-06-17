@@ -7,9 +7,11 @@ const SLOT_LABELS: Record<string, string> = Object.fromEntries(
 );
 
 // Formatea número argentino para la API de Meta (sin +, con 549 prefix)
+// Argentina móvil: 549 + 10 dígitos (ej: 5493764114013)
 function formatPhone(number: string): string {
   const digits = number.replace(/\D/g, "");
-  if (digits.startsWith("54")) return digits;
+  if (digits.startsWith("549")) return digits;
+  if (digits.startsWith("54"))  return `549${digits.slice(2)}`;
   return `549${digits}`;
 }
 
@@ -62,12 +64,14 @@ async function sendTemplate(
       }
     );
 
+    const resBody = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      console.error(`WhatsApp template "${templateName}" error:`, JSON.stringify(errBody));
+      console.error(`WhatsApp template "${templateName}" error:`, JSON.stringify(resBody));
       return false;
     }
 
+    console.log(`WhatsApp template "${templateName}" enviado a ${formatPhone(to)}:`, JSON.stringify(resBody));
     return true;
   } catch (err) {
     console.error("WhatsApp fetch error:", err);
