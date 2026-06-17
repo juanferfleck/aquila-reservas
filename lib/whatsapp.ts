@@ -49,7 +49,7 @@ async function sendTemplate(
           type: "template",
           template: {
             name: templateName,
-            language: { code: "es" },
+            language: { code: "es_AR" },
             components: [
               {
                 type: "body",
