@@ -373,13 +373,27 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
                 </button>
               )}
 
-              {/* Asistió o no asistió: bloqueada, info */}
-              {(r.status === "attended" || r.status === "no_show") && (
+              {/* Asistió: bloqueada definitiva */}
+              {r.status === "attended" && (
                 <p className="text-center text-xs text-stone-400 py-1">
-                  {r.status === "attended"
-                    ? "Ya asistió — no puede reservar nuevamente."
-                    : "Marcada como inasistencia — no puede reservar nuevamente."}
+                  Ya asistió — no puede reservar nuevamente.
                 </p>
+              )}
+
+              {/* No asistió: puede habilitarse para re-agendar */}
+              {r.status === "no_show" && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-center text-xs text-stone-400 py-1">
+                    Marcada como inasistencia — no puede reservar nuevamente.
+                  </p>
+                  <button
+                    onClick={() => onChangeStatus(r.id, "cancelled")}
+                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-aquila-300 text-aquila-700 text-xs font-bold hover:bg-aquila-50 transition-all active:scale-95"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Habilitar para re-agendar
+                  </button>
+                </div>
               )}
             </div>
           )}
