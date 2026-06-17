@@ -43,6 +43,7 @@ async function sendTemplate(
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           messaging_product: "whatsapp",
           to: formatPhone(to),

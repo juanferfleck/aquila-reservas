@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) throw error;
-      sendConfirmation(data).catch(console.error);
+      await sendConfirmation(data).catch(console.error);
       return NextResponse.json({ reservation: data }, { status: 201 });
     }
 
@@ -223,8 +223,7 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Enviar confirmación por WhatsApp (fire & forget — no bloquea la respuesta)
-    sendConfirmation(data).catch(console.error);
+    await sendConfirmation(data).catch(console.error);
 
     return NextResponse.json({ reservation: data }, { status: 201 });
   } catch (err) {
