@@ -12,10 +12,6 @@ export const metadata: Metadata = {
   title: "Aquila Evolución",
   description:
     "Reservá tu clase de prueba gratuita de calistenia en Aquila Evolución. Cupos limitados.",
-  icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
-  },
   openGraph: {
     title: "Aquila Evolución",
     description: "Reservá tu clase de prueba gratuita de calistenia. Cupos limitados.",
