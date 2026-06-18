@@ -9,11 +9,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Clase de Prueba Gratuita · Aquila Evolución",
+  title: "Aquila Evolución",
   description:
     "Reservá tu clase de prueba gratuita de calistenia en Aquila Evolución. Cupos limitados.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
   openGraph: {
-    title: "Clase de Prueba Gratuita · Aquila Evolución",
+    title: "Aquila Evolución",
     description: "Reservá tu clase de prueba gratuita de calistenia. Cupos limitados.",
     type: "website",
   },
