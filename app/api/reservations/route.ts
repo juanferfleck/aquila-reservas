@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 import { MAX_PER_SLOT } from "@/lib/constants";
 import { sendConfirmation } from "@/lib/whatsapp";
+import { sendConfirmationEmail } from "@/lib/email";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -203,7 +204,10 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) throw error;
-      await sendConfirmation(data).catch(console.error);
+      await Promise.all([
+        sendConfirmation(data).catch(console.error),
+        sendConfirmationEmail(data).catch(console.error),
+      ]);
       return NextResponse.json({ reservation: data }, { status: 201 });
     }
 
@@ -223,7 +227,10 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    await sendConfirmation(data).catch(console.error);
+    await Promise.all([
+      sendConfirmation(data).catch(console.error),
+      sendConfirmationEmail(data).catch(console.error),
+    ]);
 
     return NextResponse.json({ reservation: data }, { status: 201 });
   } catch (err) {
