@@ -89,13 +89,14 @@ type ReservationInfo = {
 };
 
 // Template: aquila_confirmacion  (3 parámetros)
-// Texto en Meta:
 // "¡Hola {{1}}! 🦅 Tu clase de prueba en *Aquila Evolución* está confirmada
 // para el {{2}} a las {{3}} ✅
 //
 // Acordate de traer:
 // 💧 Una botellita de agua (la podés cargar acá)
 // 🏃 Una toalla personal
+//
+// 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
 // ¡Te esperamos con todo listo!"
 export function sendConfirmation(r: ReservationInfo): Promise<boolean> {
@@ -107,13 +108,14 @@ export function sendConfirmation(r: ReservationInfo): Promise<boolean> {
 }
 
 // Template: aquila_recordatorio_24h  (3 parámetros)
-// Texto en Meta:
 // "¡Hola {{1}}! 🦅 Mañana {{2}} a las {{3}} es tu clase de prueba
 // en *Aquila Evolución* 💪
 //
 // Recordá traer:
 // 💧 Tu botellita de agua (la podés cargar acá)
 // 🏃 Una toalla personal
+//
+// 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
 // ¡Nos vemos mañana!"
 export function sendReminder24h(r: ReservationInfo): Promise<boolean> {
@@ -125,13 +127,14 @@ export function sendReminder24h(r: ReservationInfo): Promise<boolean> {
 }
 
 // Template: aquila_recordatorio_2h  (2 parámetros)
-// Texto en Meta:
-// "¡Hola {{1}}! 🦅 En 2 horas ({{2}}) arranca tu clase de prueba
+// "¡Hola {{1}}! 🦅 En un rato ({{2}}) arranca tu clase de prueba
 // en *Aquila Evolución* ⚡
 //
 // Revisá que tenés:
 // 💧 Tu botellita de agua
 // 🏃 Tu toalla personal
+//
+// 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
 // ¡Ya falta poquito, te esperamos! 💪"
 export function sendReminder2h(r: ReservationInfo): Promise<boolean> {
