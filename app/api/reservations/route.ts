@@ -204,10 +204,16 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) throw error;
-      await Promise.all([
-        sendConfirmation(data).catch(console.error),
-        sendConfirmationEmail(data).catch(console.error),
+      const [waOk, emailOk] = await Promise.all([
+        sendConfirmation(data).catch(() => false),
+        sendConfirmationEmail(data).catch(() => false),
       ]);
+      if (waOk || emailOk) {
+        await getSupabaseAdmin()
+          .from("reservations")
+          .update({ confirmation_sent: true })
+          .eq("id", data.id);
+      }
       return NextResponse.json({ reservation: data }, { status: 201 });
     }
 
@@ -227,10 +233,16 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    await Promise.all([
-      sendConfirmation(data).catch(console.error),
-      sendConfirmationEmail(data).catch(console.error),
+    const [waOk, emailOk] = await Promise.all([
+      sendConfirmation(data).catch(() => false),
+      sendConfirmationEmail(data).catch(() => false),
     ]);
+    if (waOk || emailOk) {
+      await getSupabaseAdmin()
+        .from("reservations")
+        .update({ confirmation_sent: true })
+        .eq("id", data.id);
+    }
 
     return NextResponse.json({ reservation: data }, { status: 201 });
   } catch (err) {
