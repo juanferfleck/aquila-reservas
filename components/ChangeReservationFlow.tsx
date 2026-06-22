@@ -118,11 +118,16 @@ export default function ChangeReservationFlow() {
     return (
       <button
         onClick={() => setStep("email")}
-        className="group flex items-center gap-2 text-xs text-stone-400 hover:text-aquila-600 transition-colors py-1"
+        className="group w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-aquila-200 bg-aquila-50/60 hover:bg-aquila-50 hover:border-aquila-300 transition-all active:scale-95"
       >
-        <CalendarClock className="w-3.5 h-3.5 shrink-0" />
-        ¿Tenés una reserva y querés cambiar la fecha?
-        <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+        <div className="w-9 h-9 rounded-xl bg-aquila-100 group-hover:bg-aquila-200 flex items-center justify-center shrink-0 transition-colors">
+          <CalendarClock className="w-4 h-4 text-aquila-600" />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-semibold text-aquila-800">¿Querés cambiar tu turno?</p>
+          <p className="text-xs text-aquila-500 mt-0.5">Ingresá tu email y elegí otra fecha</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-aquila-400 group-hover:text-aquila-600 transition-transform group-hover:translate-x-0.5" />
       </button>
     );
   }
