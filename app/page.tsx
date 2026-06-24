@@ -4,6 +4,8 @@ import ChangeReservationFlow from "@/components/ChangeReservationFlow";
 import { WHATSAPP_NUMBER, CONTACT_EMAIL } from "@/lib/constants";
 import { ShieldCheck, Users, Sparkles } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const FEATURES = [
   { icon: ShieldCheck, text: "Gratis, de verdad. Sin letra chica.", color: "bg-aquila-100 text-aquila-700" },
   { icon: Sparkles,    text: "Clases semipersonalizadas",            color: "bg-coral-100 text-coral-600"  },
