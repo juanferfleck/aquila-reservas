@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 import { MAX_PER_SLOT } from "@/lib/constants";
-import { sendOwnerNotification } from "@/lib/whatsapp";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -119,15 +118,13 @@ export async function PATCH(request: NextRequest) {
     .from("reservations")
     .update({ date: new_date, time_slot: new_time_slot, reminder_24h_sent: false, reminder_1h_sent: false })
     .eq("id", reservation.id)
-    .select("id, name, whatsapp, date, time_slot")
+    .select("id, name, date, time_slot")
     .single();
 
   if (error) {
     console.error("Error updating reservation:", error);
     return err("Error al cambiar el turno. Intentá de nuevo.", 500);
   }
-
-  sendOwnerNotification(updated).catch(() => false);
 
   return NextResponse.json({ reservation: updated });
 }

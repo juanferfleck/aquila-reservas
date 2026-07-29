@@ -181,7 +181,6 @@ Admin en /admin
 | aquila_confirmacion       | 3          | Al crear/reactivar reserva |
 | aquila_recordatorio_24h   | 3          | 23–25hs antes de la clase  |
 | aquila_recordatorio_1h    | 2          | 0.75–1.25hs antes de la clase |
-| aquila_aviso_reserva      | 4          | Aviso al dueño por cada nueva reserva |
 
 **Parámetros:** `{{1}}` = nombre, `{{2}}` = fecha (solo confirmación y 24hs), `{{3}}` = horario
 
