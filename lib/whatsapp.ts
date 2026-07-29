@@ -6,13 +6,13 @@ const SLOT_LABELS: Record<string, string> = Object.fromEntries(
   [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS].map((s) => [s.id, s.label])
 );
 
-// Formatea número argentino para la API de Meta (sin +, con 549 prefix)
-// Argentina móvil: 549 + 10 dígitos (ej: 5493764114013)
+// Formatea número argentino a E.164 (con +, prefijo 549)
+// Argentina móvil: +549 + 10 dígitos (ej: +5493764114013)
 function formatPhone(number: string): string {
   const digits = number.replace(/\D/g, "");
-  if (digits.startsWith("549")) return digits;
-  if (digits.startsWith("54"))  return `549${digits.slice(2)}`;
-  return `549${digits}`;
+  if (digits.startsWith("549")) return `+${digits}`;
+  if (digits.startsWith("54"))  return `+549${digits.slice(2)}`;
+  return `+549${digits}`;
 }
 
 function dateLabel(date: string): string {
@@ -23,31 +23,33 @@ function slotLabel(timeSlot: string): string {
   return SLOT_LABELS[timeSlot] ?? timeSlot;
 }
 
+// Número de WhatsApp Business de Aquila Evolución registrado en YCloud (E.164)
+const YCLOUD_FROM = process.env.YCLOUD_WHATSAPP_FROM || "+5493764114013";
+
 async function sendTemplate(
   to: string,
   templateName: string,
   params: string[]
 ): Promise<boolean> {
-  const token   = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const apiKey = process.env.YCLOUD_API_KEY;
 
-  if (!token || !phoneId) {
-    console.warn("WhatsApp: variables de entorno no configuradas, omitiendo envío.");
+  if (!apiKey) {
+    console.warn("WhatsApp: YCLOUD_API_KEY no configurada, omitiendo envío.");
     return false;
   }
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneId}/messages`,
+      "https://api.ycloud.com/v2/whatsapp/messages",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          "X-API-Key": apiKey,
           "Content-Type": "application/json",
         },
         signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
-          messaging_product: "whatsapp",
+          from: YCLOUD_FROM,
           to: formatPhone(to),
           type: "template",
           template: {
@@ -98,6 +100,10 @@ type ReservationInfo = {
 //
 // 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
+// ⚠️ ¿No podés venir? Cancelá o cambiá el día en reserva.aquilaevo.com, o
+// avisanos por acá. Si no avisás, no podrás reprogramar la clase gratis y
+// la próxima se abona.
+//
 // ¡Te esperamos con todo listo!"
 export function sendConfirmation(r: ReservationInfo): Promise<boolean> {
   return sendTemplate(r.whatsapp, "aquila_confirmacion", [
@@ -117,6 +123,10 @@ export function sendConfirmation(r: ReservationInfo): Promise<boolean> {
 //
 // 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
+// ⚠️ ¿No podés venir? Cancelá o cambiá el día en reserva.aquilaevo.com, o
+// avisanos por acá. Si no avisás, no podrás reprogramar la clase gratis y
+// la próxima se abona.
+//
 // ¡Nos vemos mañana!"
 export function sendReminder24h(r: ReservationInfo): Promise<boolean> {
   return sendTemplate(r.whatsapp, "aquila_recordatorio_24h", [
@@ -126,7 +136,7 @@ export function sendReminder24h(r: ReservationInfo): Promise<boolean> {
   ]);
 }
 
-// Template: aquila_recordatorio_2h  (2 parámetros)
+// Template: aquila_recordatorio_1h  (2 parámetros)
 // "¡Hola {{1}}! 🦅 En un rato ({{2}}) arranca tu clase de prueba
 // en *Aquila Evolución* ⚡
 //
@@ -136,10 +146,30 @@ export function sendReminder24h(r: ReservationInfo): Promise<boolean> {
 //
 // 📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8
 //
+// ⚠️ ¿No podés venir? Avisanos por acá cuanto antes así no perdés la
+// clase gratis 🙏
+//
 // ¡Ya falta poquito, te esperamos! 💪"
-export function sendReminder2h(r: ReservationInfo): Promise<boolean> {
-  return sendTemplate(r.whatsapp, "aquila_recordatorio_2h", [
+export function sendReminder1h(r: ReservationInfo): Promise<boolean> {
+  return sendTemplate(r.whatsapp, "aquila_recordatorio_1h", [
     r.name,
     slotLabel(r.time_slot),
+  ]);
+}
+
+// Número de Aquila Evolución que recibe el aviso de cada nueva inscripción
+const OWNER_WHATSAPP = process.env.OWNER_WHATSAPP_NUMBER || "3764114013";
+
+// Template: aquila_aviso_reserva  (4 parámetros) — aviso al dueño, no al alumno
+// "🦅 Nueva reserva en Aquila Evolución
+// Alumno: {{1}}
+// Fecha: {{2}} a las {{3}}
+// WhatsApp: {{4}}"
+export function sendOwnerNotification(r: ReservationInfo): Promise<boolean> {
+  return sendTemplate(OWNER_WHATSAPP, "aquila_aviso_reserva", [
+    r.name,
+    dateLabel(r.date),
+    slotLabel(r.time_slot),
+    r.whatsapp,
   ]);
 }

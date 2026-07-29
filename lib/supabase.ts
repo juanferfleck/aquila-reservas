@@ -37,7 +37,7 @@ export type Reservation = {
   status: "confirmed" | "cancelled" | "attended" | "no_show";
   confirmation_sent?: boolean;
   reminder_24h_sent?: boolean;
-  reminder_2h_sent?: boolean;
+  reminder_1h_sent?: boolean;
 };
 
 export type BlockedDate = {
