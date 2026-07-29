@@ -156,20 +156,3 @@ export function sendReminder1h(r: ReservationInfo): Promise<boolean> {
     slotLabel(r.time_slot),
   ]);
 }
-
-// Número de Aquila Evolución que recibe el aviso de cada nueva inscripción
-const OWNER_WHATSAPP = process.env.OWNER_WHATSAPP_NUMBER || "3764114013";
-
-// Template: aquila_aviso_reserva  (4 parámetros) — aviso al dueño, no al alumno
-// "🦅 Nueva reserva en Aquila Evolución
-// Alumno: {{1}}
-// Fecha: {{2}} a las {{3}}
-// WhatsApp: {{4}}"
-export function sendOwnerNotification(r: ReservationInfo): Promise<boolean> {
-  return sendTemplate(OWNER_WHATSAPP, "aquila_aviso_reserva", [
-    r.name,
-    dateLabel(r.date),
-    slotLabel(r.time_slot),
-    r.whatsapp,
-  ]);
-}
