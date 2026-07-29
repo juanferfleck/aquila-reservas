@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { sendReminder24h, sendReminder2h } from "@/lib/whatsapp";
+import { sendReminder24h, sendReminder1h } from "@/lib/whatsapp";
 
 // Argentina es UTC-3 (sin horario de verano)
 function classToUTC(date: string, timeSlot: string): Date {
@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
 
   const { data: reservations, error } = await supabase
     .from("reservations")
-    .select("id, name, whatsapp, date, time_slot, reminder_24h_sent, reminder_2h_sent")
+    .select("id, name, whatsapp, date, time_slot, reminder_24h_sent, reminder_1h_sent")
     .eq("status", "confirmed")
     .gte("date", today)
-    .or("reminder_24h_sent.eq.false,reminder_2h_sent.eq.false");
+    .or("reminder_24h_sent.eq.false,reminder_1h_sent.eq.false");
 
   if (error) {
     console.error("Cron reminders: error al consultar BD:", error);
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   }
 
   let sent24h = 0;
-  let sent2h  = 0;
+  let sent1h  = 0;
   let errors  = 0;
 
   for (const r of reservations ?? []) {
@@ -70,24 +70,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Recordatorio 1h: enviar cuando falte entre 0.75 y 1.25 horas
-    if (!r.reminder_2h_sent && diffHours >= 0.75 && diffHours < 1.25) {
-      const ok = await sendReminder2h(r);
+    if (!r.reminder_1h_sent && diffHours >= 0.75 && diffHours < 1.25) {
+      const ok = await sendReminder1h(r);
       if (ok) {
-        await supabase.from("reservations").update({ reminder_2h_sent: true }).eq("id", r.id);
-        sent2h++;
+        await supabase.from("reservations").update({ reminder_1h_sent: true }).eq("id", r.id);
+        sent1h++;
       } else {
         errors++;
       }
     }
   }
 
-  console.log(`Cron reminders: 24h=${sent24h}, 2h=${sent2h}, errores=${errors}`);
+  console.log(`Cron reminders: 24h=${sent24h}, 1h=${sent1h}, errores=${errors}`);
 
   return NextResponse.json({
     ok: true,
     checked:  reservations?.length ?? 0,
     sent_24h: sent24h,
-    sent_2h:  sent2h,
+    sent_1h:  sent1h,
     errors,
     timestamp: new Date().toISOString(),
   });

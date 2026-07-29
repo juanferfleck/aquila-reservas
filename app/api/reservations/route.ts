@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 import { MAX_PER_SLOT } from "@/lib/constants";
-import { sendConfirmation } from "@/lib/whatsapp";
+import { sendConfirmation, sendOwnerNotification } from "@/lib/whatsapp";
 import { sendConfirmationEmail } from "@/lib/email";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
           time_slot,
           status:            "confirmed",
           reminder_24h_sent: false,
-          reminder_2h_sent:  false,
+          reminder_1h_sent:  false,
         })
         .eq("id", cancelled.id)
         .select()
@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
       const [waOk, emailOk] = await Promise.all([
         sendConfirmation(data).catch(() => false),
         sendConfirmationEmail(data).catch(() => false),
+        sendOwnerNotification(data).catch(() => false),
       ]);
       if (waOk || emailOk) {
         await getSupabaseAdmin()
@@ -236,6 +237,7 @@ export async function POST(request: NextRequest) {
     const [waOk, emailOk] = await Promise.all([
       sendConfirmation(data).catch(() => false),
       sendConfirmationEmail(data).catch(() => false),
+      sendOwnerNotification(data).catch(() => false),
     ]);
     if (waOk || emailOk) {
       await getSupabaseAdmin()

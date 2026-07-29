@@ -19,9 +19,9 @@
          ┌───────────────┼───────────────┐
          │               │               │
     ┌────▼────┐    ┌─────▼─────┐   ┌────▼────────┐
-    │ Supabase│    │   Meta    │   │ cron-job.org│
+    │ Supabase│    │  YCloud   │   │ cron-job.org│
     │(Postgres│    │ WhatsApp  │   │  cada 30min │
-    │   RLS)  │    │ Cloud API │   └────┬────────┘
+    │   RLS)  │    │    API    │   └────┬────────┘
     └─────────┘    └───────────┘        │
                                         │ GET /api/cron/reminders
                                         └────────────────────────▶
@@ -174,13 +174,14 @@ Admin en /admin
 
 ---
 
-## Plantillas WhatsApp (Meta Cloud API)
+## Plantillas WhatsApp (YCloud)
 
 | Nombre                    | Parámetros | Cuándo se envía         |
 |---------------------------|------------|-------------------------|
 | aquila_confirmacion       | 3          | Al crear/reactivar reserva |
 | aquila_recordatorio_24h   | 3          | 23–25hs antes de la clase  |
-| aquila_recordatorio_2h    | 2          | 0.5–1.5hs antes de la clase |
+| aquila_recordatorio_1h    | 2          | 0.75–1.25hs antes de la clase |
+| aquila_aviso_reserva      | 4          | Aviso al dueño por cada nueva reserva |
 
 **Parámetros:** `{{1}}` = nombre, `{{2}}` = fecha (solo confirmación y 24hs), `{{3}}` = horario
 
@@ -194,8 +195,8 @@ Admin en /admin
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Clave pública Supabase               |
 | SUPABASE_SERVICE_ROLE_KEY     | Clave de servicio (bypasea RLS)      |
 | ADMIN_PASSWORD                | Contraseña del panel admin           |
-| WHATSAPP_ACCESS_TOKEN         | Token de acceso Meta                 |
-| WHATSAPP_PHONE_NUMBER_ID      | ID del número: 1093999950472384      |
+| YCLOUD_API_KEY                | API key de YCloud (Developers → API Keys) |
+| YCLOUD_WHATSAPP_FROM          | Número WhatsApp Business en YCloud: +5493764114013 |
 | CRON_SECRET                   | Clave para autenticar cron-job.org   |
 
 ---
