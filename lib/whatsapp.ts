@@ -1,9 +1,9 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS } from "@/lib/constants";
+import { ALL_SLOTS } from "@/lib/constants";
 
 const SLOT_LABELS: Record<string, string> = Object.fromEntries(
-  [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS].map((s) => [s.id, s.label])
+  ALL_SLOTS.map((s) => [s.id, s.label])
 );
 
 // Formatea número argentino a E.164 (con +, prefijo 549)

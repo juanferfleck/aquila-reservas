@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDay, parseISO } from "date-fns";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
-import { MAX_PER_SLOT } from "@/lib/constants";
+import { MAX_PER_SLOT, getSlotsForDay } from "@/lib/constants";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -76,6 +77,15 @@ export async function PATCH(request: NextRequest) {
   if (blocked) {
     return err(
       `No hay clases ese día: ${blocked.reason ?? "Clase suspendida"}. Elegí otra fecha.`,
+      409
+    );
+  }
+
+  // Verificar que el turno exista para ese día de la semana
+  const validSlotIds = getSlotsForDay(getDay(parseISO(new_date))).map((s) => s.id);
+  if (!validSlotIds.includes(new_time_slot)) {
+    return err(
+      "Ese horario no está disponible para el día elegido. Por favor elegí otro.",
       409
     );
   }

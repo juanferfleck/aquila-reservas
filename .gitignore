@@ -17,3 +17,6 @@ npm-debug.log*
 Thumbs.db
 .vercel
 .env*
+
+# Supabase CLI
+supabase/.temp/

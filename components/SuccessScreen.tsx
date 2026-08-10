@@ -3,7 +3,7 @@
 import { format, getDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { CheckCircle2, Calendar, Clock, MessageCircle } from "lucide-react";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS, WHATSAPP_NUMBER } from "@/lib/constants";
+import { getSlotsForDay, WHATSAPP_NUMBER } from "@/lib/constants";
 
 type Props = {
   name: string;
@@ -13,7 +13,7 @@ type Props = {
 };
 
 function getSlotLabel(date: Date, slotId: string): string {
-  const slots = getDay(date) === 6 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
+  const slots = getSlotsForDay(getDay(date));
   return slots.find((s) => s.id === slotId)?.label ?? slotId;
 }
 

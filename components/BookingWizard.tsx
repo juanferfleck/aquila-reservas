@@ -10,7 +10,7 @@ import SuccessScreen from "./SuccessScreen";
 import StepIndicator from "./StepIndicator";
 import { Calendar, Clock, ChevronRight, Loader2 } from "lucide-react";
 import clsx from "clsx";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS } from "@/lib/constants";
+import { getSlotsForDay } from "@/lib/constants";
 
 const STEPS = ["Fecha", "Horario", "Tus datos"];
 
@@ -27,7 +27,7 @@ function validatePhone(phone: string): boolean {
 }
 
 function getSlotLabel(date: Date, slotId: string): string {
-  const slots = getDay(date) === 6 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
+  const slots = getSlotsForDay(getDay(date));
   return slots.find((s) => s.id === slotId)?.label ?? slotId;
 }
 

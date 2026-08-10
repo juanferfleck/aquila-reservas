@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS, MAX_PER_SLOT } from "@/lib/constants";
+import { getSlotsForDay, MAX_PER_SLOT } from "@/lib/constants";
 import clsx from "clsx";
 import { Clock, Users, Ban } from "lucide-react";
 
@@ -20,7 +20,7 @@ type AvailabilityResponse = {
 };
 
 function getSlotsForDate(date: Date) {
-  return getDay(date) === 6 ? SATURDAY_SLOTS : WEEKDAY_SLOTS;
+  return getSlotsForDay(getDay(date));
 }
 
 const MORNING_SLOTS = new Set(["07:00", "08:00"]);

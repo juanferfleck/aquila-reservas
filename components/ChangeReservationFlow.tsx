@@ -10,10 +10,10 @@ import {
 import clsx from "clsx";
 import CalendarPicker from "@/components/CalendarPicker";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS } from "@/lib/constants";
+import { ALL_SLOTS } from "@/lib/constants";
 
 const SLOT_LABELS: Record<string, string> = Object.fromEntries(
-  [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS].map((s) => [s.id, s.label])
+  ALL_SLOTS.map((s) => [s.id, s.label])
 );
 
 type ExistingReservation = {

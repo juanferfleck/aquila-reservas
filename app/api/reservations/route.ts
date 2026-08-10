@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDay, parseISO } from "date-fns";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
-import { MAX_PER_SLOT } from "@/lib/constants";
+import { MAX_PER_SLOT, getSlotsForDay } from "@/lib/constants";
 import { sendConfirmation } from "@/lib/whatsapp";
 import { sendConfirmationEmail } from "@/lib/email";
 
@@ -77,6 +78,15 @@ export async function POST(request: NextRequest) {
     if (blocked) {
       return errorResponse(
         `No hay clases ese día: ${blocked.reason ?? "Clase suspendida"}. Por favor elegí otra fecha.`,
+        409
+      );
+    }
+
+    // Verificar que el turno exista para ese día de la semana
+    const validSlotIds = getSlotsForDay(getDay(parseISO(date))).map((s) => s.id);
+    if (!validSlotIds.includes(time_slot)) {
+      return errorResponse(
+        "Ese horario no está disponible para el día elegido. Por favor elegí otro.",
         409
       );
     }

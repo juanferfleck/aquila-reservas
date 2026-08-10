@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import type { Reservation } from "@/lib/supabase";
-import { WEEKDAY_SLOTS, SATURDAY_SLOTS } from "@/lib/constants";
+import { ALL_SLOTS } from "@/lib/constants";
 
 const SLOT_LABELS: Record<string, string> = Object.fromEntries(
-  [...WEEKDAY_SLOTS, ...SATURDAY_SLOTS].map((s) => [s.id, s.label])
+  ALL_SLOTS.map((s) => [s.id, s.label])
 );
 
 type Filter = "upcoming" | "all" | "cancelled" | "attended" | "no_show";
