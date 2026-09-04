@@ -6,7 +6,7 @@ import { es } from "date-fns/locale";
 import {
   MessageCircle, XCircle, CheckCircle2, Loader2,
   CalendarDays, User, Mail, Phone, RefreshCw,
-  ChevronRight, AlertTriangle, UserX,
+  ChevronRight, AlertTriangle, UserX, ArrowDownUp,
 } from "lucide-react";
 import clsx from "clsx";
 import type { Reservation } from "@/lib/supabase";
@@ -25,6 +25,19 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "attended",  label: "Asistidas"    },
   { id: "no_show",   label: "No asistieron" },
 ];
+
+type SortOrder = "desc" | "asc";
+
+// "Próximas" se lee mejor cronológicamente; el resto (reservas pasadas)
+// arranca por la más reciente.
+function defaultSortFor(f: Filter): SortOrder {
+  return f === "upcoming" ? "asc" : "desc";
+}
+
+const SORT_LABELS: Record<SortOrder, string> = {
+  desc: "Más recientes primero",
+  asc:  "Más antiguas primero",
+};
 
 function toWhatsAppUrl(number: string, name: string, date: string, slot: string): string {
   const digits = number.replace(/\D/g, "");
@@ -75,6 +88,7 @@ type Props = { password: string };
 
 export default function ReservationsDashboard({ password }: Props) {
   const [filter, setFilter]             = useState<Filter>("upcoming");
+  const [sortOrder, setSortOrder]       = useState<SortOrder>(defaultSortFor("upcoming"));
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading]           = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
@@ -136,7 +150,11 @@ export default function ReservationsDashboard({ password }: Props) {
     acc[r.date].push(r);
     return acc;
   }, {});
-  const sortedDates = Object.keys(grouped).sort();
+  const dir = sortOrder === "asc" ? 1 : -1;
+  const sortedDates = Object.keys(grouped).sort((a, b) => a.localeCompare(b) * dir);
+  for (const date of sortedDates) {
+    grouped[date].sort((a, b) => a.time_slot.localeCompare(b.time_slot) * dir);
+  }
 
   const emptyMsg: Record<Filter, string> = {
     upcoming:  "No hay reservas próximas.",
@@ -154,7 +172,10 @@ export default function ReservationsDashboard({ password }: Props) {
         {FILTERS.map((f) => (
           <button
             key={f.id}
-            onClick={() => setFilter(f.id)}
+            onClick={() => {
+              setFilter(f.id);
+              setSortOrder(defaultSortFor(f.id));
+            }}
             className={clsx(
               "shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap",
               filter === f.id
@@ -173,6 +194,20 @@ export default function ReservationsDashboard({ password }: Props) {
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Orden */}
+      {reservations.length > 0 && !loading && (
+        <div className="flex justify-end -mt-2">
+          <button
+            onClick={() => setSortOrder((v) => (v === "desc" ? "asc" : "desc"))}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-aquila-100 text-[11px] font-bold text-aquila-600 hover:border-aquila-300 hover:text-aquila-700 transition-all active:scale-95"
+            title="Cambiar el orden"
+          >
+            <ArrowDownUp className="w-3 h-3" />
+            {SORT_LABELS[sortOrder]}
+          </button>
+        </div>
+      )}
 
       {/* Contenido */}
       {loading ? (
