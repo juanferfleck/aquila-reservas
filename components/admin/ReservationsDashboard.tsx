@@ -168,7 +168,7 @@ export default function ReservationsDashboard({ password }: Props) {
     <div className="flex flex-col gap-4">
 
       {/* Filtros */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+      <div className="flex gap-2 overflow-x-auto lg:overflow-visible lg:flex-wrap pb-1 -mx-1 px-1 scrollbar-none">
         {FILTERS.map((f) => (
           <button
             key={f.id}
@@ -247,7 +247,7 @@ export default function ReservationsDashboard({ password }: Props) {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-2">
                 {grouped[date].map((r) => (
                   <ReservationCard
                     key={r.id}

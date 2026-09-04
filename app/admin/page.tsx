@@ -241,7 +241,7 @@ export default function AdminPage() {
 
       {/* Header sticky */}
       <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-aquila-100 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+        <div className="max-w-lg lg:max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image src="/logo.png" alt="Aquila Evolución" width={90} height={46} className="object-contain" />
             <span className="text-xs font-bold text-aquila-600 bg-aquila-100 px-2 py-0.5 rounded-full">Admin</span>
@@ -256,10 +256,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-4 flex flex-col gap-4">
+      <div className="max-w-lg lg:max-w-6xl mx-auto px-4 lg:px-6 pt-4 lg:pt-6 flex flex-col gap-4">
 
         {/* Tabs de navegación */}
-        <div className="flex gap-2 bg-white rounded-2xl border border-aquila-100 p-1.5 shadow-sm">
+        <div className="flex gap-2 bg-white rounded-2xl border border-aquila-100 p-1.5 shadow-sm lg:max-w-md">
           <button
             onClick={() => setActiveTab("reservations")}
             className={clsx(
@@ -302,7 +302,7 @@ export default function AdminPage() {
 
         {/* ── Tab: Fechas bloqueadas ── */}
         {activeTab === "blocked" && (
-          <>
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
             {/* Bloquear una fecha */}
             <div className="bg-white rounded-3xl border border-aquila-100 shadow-card p-6">
               <h2 className="text-sm font-bold text-aquila-800 mb-4 flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function AdminPage() {
                 Bloquear una fecha
               </h2>
 
-              <form onSubmit={handleBlock} className="flex flex-col gap-3">
+              <form onSubmit={handleBlock} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs font-bold text-aquila-600 uppercase tracking-wider pl-1 block mb-1.5">
                     Fecha
@@ -338,14 +338,14 @@ export default function AdminPage() {
                 </div>
 
                 {formError && (
-                  <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+                  <div className="sm:col-span-2 lg:col-span-1 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2">
                     <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                     <p className="text-xs text-red-600">{formError}</p>
                   </div>
                 )}
 
                 {formSuccess && (
-                  <div className="flex items-center gap-2 rounded-xl bg-aquila-50 border border-aquila-200 px-3 py-2">
+                  <div className="sm:col-span-2 lg:col-span-1 flex items-center gap-2 rounded-xl bg-aquila-50 border border-aquila-200 px-3 py-2">
                     <CheckCircle2 className="w-4 h-4 text-aquila-600 shrink-0" />
                     <p className="text-xs text-aquila-700 font-medium">{formSuccess}</p>
                   </div>
@@ -355,7 +355,7 @@ export default function AdminPage() {
                   type="submit"
                   disabled={submitting || !newDate}
                   className={clsx(
-                    "flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all active:scale-95",
+                    "sm:col-span-2 lg:col-span-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all active:scale-95",
                     submitting || !newDate
                       ? "bg-coral-300 cursor-not-allowed"
                       : "bg-coral-500 hover:bg-coral-600 shadow-btn-coral"
@@ -420,7 +420,7 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
       </div>
