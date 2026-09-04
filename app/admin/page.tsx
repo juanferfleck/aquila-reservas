@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import ReservationsDashboard from "@/components/admin/ReservationsDashboard";
+import StatsPanel from "@/components/admin/StatsPanel";
 
 type BlockedDate = {
   id: string;
@@ -287,6 +288,8 @@ export default function AdminPage() {
 
         {/* ── Tab: Reservas ── */}
         {activeTab === "reservations" && (
+          <>
+          <StatsPanel password={password} />
           <div className="bg-white rounded-3xl border border-aquila-100 shadow-card p-5">
             <h2 className="text-sm font-bold text-aquila-800 mb-4 flex items-center gap-2">
               <LayoutList className="w-4 h-4 text-aquila-500" />
@@ -294,6 +297,7 @@ export default function AdminPage() {
             </h2>
             <ReservationsDashboard password={password} />
           </div>
+          </>
         )}
 
         {/* ── Tab: Fechas bloqueadas ── */}
