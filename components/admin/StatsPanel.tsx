@@ -138,7 +138,7 @@ export default function StatsPanel({ password }: Props) {
         </div>
       ) : stats ? (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <StatCard
               icon={<CalendarCheck className="w-3.5 h-3.5" />}
               label="Total"
@@ -163,9 +163,6 @@ export default function StatsPanel({ password }: Props) {
               value={stats.noShow}
               tone="amber"
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
             <StatCard
               icon={<RotateCcw className="w-3.5 h-3.5" />}
               label="Volvieron tras cancelar"
