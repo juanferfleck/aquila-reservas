@@ -6,12 +6,14 @@ import {
   CalendarCheck, XCircle, CheckCircle2, RotateCcw, UserMinus, UserX,
 } from "lucide-react";
 import type { Reservation } from "@/lib/supabase";
+import StatusDonut, { type DonutSlice } from "./StatusDonut";
 
 type Stats = {
   total: number;
   cancelled: number;
   attended: number;
   noShow: number;
+  confirmed: number;
   rebookedAfterCancel: number;
   lostAfterCancel: number;
 };
@@ -51,10 +53,19 @@ function computeStats(reservations: Reservation[]): Stats {
     cancelled: reservations.filter((r) => r.status === "cancelled").length,
     attended:  reservations.filter((r) => r.status === "attended").length,
     noShow:    reservations.filter((r) => r.status === "no_show").length,
+    confirmed: reservations.filter((r) => r.status === "confirmed").length,
     rebookedAfterCancel,
     lostAfterCancel,
   };
 }
+
+// Orden validado con el script de validación de paletas: azul → verde → amarillo → rojo
+const DONUT_COLORS = {
+  confirmed: "#2a78d6",
+  attended:  "#1baf7a",
+  noShow:    "#eda100",
+  cancelled: "#e34948",
+} as const;
 
 type StatCardProps = {
   icon: React.ReactNode;
@@ -111,6 +122,15 @@ export default function StatsPanel({ password }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
+  const donutSlices: DonutSlice[] = stats
+    ? [
+        { label: "Confirmadas (sin resolver)", value: stats.confirmed, color: DONUT_COLORS.confirmed },
+        { label: "Asistieron",                 value: stats.attended,  color: DONUT_COLORS.attended  },
+        { label: "No asistieron",              value: stats.noShow,    color: DONUT_COLORS.noShow    },
+        { label: "Canceladas",                 value: stats.cancelled, color: DONUT_COLORS.cancelled },
+      ]
+    : [];
+
   return (
     <div className="bg-white rounded-3xl border border-aquila-100 shadow-card p-5">
       <div className="flex items-center justify-between mb-4">
@@ -137,7 +157,7 @@ export default function StatsPanel({ password }: Props) {
           <p className="text-sm text-red-600">{error}</p>
         </div>
       ) : stats ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <StatCard
               icon={<CalendarCheck className="w-3.5 h-3.5" />}
@@ -175,6 +195,13 @@ export default function StatsPanel({ password }: Props) {
               value={stats.lostAfterCancel}
               tone="coral"
             />
+          </div>
+
+          <div className="border-t border-aquila-100/70 pt-5 mt-1">
+            <p className="text-xs font-bold text-aquila-700 mb-3 text-center sm:text-left">
+              Cómo terminaron las reservas
+            </p>
+            <StatusDonut unitLabel="reservas" slices={donutSlices} />
           </div>
 
           <p className="text-[10px] text-stone-400 leading-relaxed px-1">
