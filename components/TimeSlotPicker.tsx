@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { getSlotsForDay, MAX_PER_SLOT } from "@/lib/constants";
+import { getSlotsForDay, MAX_PER_SLOT, MORNING_SLOT_IDS } from "@/lib/constants";
 import clsx from "clsx";
 import { Clock, Users, Ban } from "lucide-react";
 
@@ -23,8 +23,6 @@ function getSlotsForDate(date: Date) {
   return getSlotsForDay(getDay(date));
 }
 
-const MORNING_SLOTS = new Set(["07:00", "08:00"]);
-
 function slotUnavailableReason(date: Date, slotId: string): "past" | "too_soon" | null {
   const [hours, minutes] = slotId.split(":").map(Number);
   const slotDateTime = new Date(
@@ -32,7 +30,7 @@ function slotUnavailableReason(date: Date, slotId: string): "past" | "too_soon" 
   );
   const now = new Date();
   if (slotDateTime <= now) return "past";
-  if (MORNING_SLOTS.has(slotId)) {
+  if (MORNING_SLOT_IDS.includes(slotId)) {
     const hoursUntil = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     if (hoursUntil < 12) return "too_soon";
   }

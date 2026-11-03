@@ -35,6 +35,9 @@ export type Reservation = {
   time_slot: string;
   created_at: string;
   status: "confirmed" | "cancelled" | "attended" | "no_show";
+  no_show_count?: number; // solo lo ve el admin
+  // Solo para status "attended" y solo lo ve el admin: null = sin definir
+  enrollment?: "enrolled" | "not_returned" | null;
   confirmation_sent?: boolean;
   reminder_24h_sent?: boolean;
   reminder_1h_sent?: boolean;

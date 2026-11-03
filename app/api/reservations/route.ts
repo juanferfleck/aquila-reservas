@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDay, parseISO } from "date-fns";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
-import { MAX_PER_SLOT, getSlotsForDay } from "@/lib/constants";
+import { MAX_PER_SLOT, MORNING_SLOT_IDS, getSlotsForDay } from "@/lib/constants";
 import { sendConfirmation } from "@/lib/whatsapp";
 import { sendConfirmationEmail } from "@/lib/email";
 
@@ -9,6 +9,24 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
+}
+
+// no_show_count y enrollment son solo para el admin: nunca se devuelven en las respuestas públicas
+function withoutAdminFields<T extends { no_show_count?: number; enrollment?: string | null }>(
+  reservation: T
+) {
+  const { no_show_count: _noShowCount, enrollment: _enrollment, ...publicFields } = reservation;
+  return publicFields;
+}
+
+// Para decidir si un email repetido es la misma persona: primer nombre (sin tildes ni
+// mayúsculas) o teléfono (últimos 10 dígitos, sin importar el formato)
+function firstName(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().split(/\s+/)[0] ?? "";
+}
+
+function phoneKey(phone: string): string {
+  return phone.replace(/\D/g, "").slice(-10);
 }
 
 function isAdminAuthorized(request: NextRequest): boolean {
@@ -92,7 +110,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que el turno no haya pasado y la regla de 12hs para turnos de mañana
-    const MORNING_SLOTS = ["07:00", "08:00"];
     const slotDateTime = new Date(`${date}T${time_slot}:00-03:00`);
     const now = new Date();
 
@@ -100,7 +117,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Este turno ya pasó. Por favor elegí otro horario.", 409);
     }
 
-    if (MORNING_SLOTS.includes(time_slot)) {
+    if (MORNING_SLOT_IDS.includes(time_slot)) {
       const hoursUntil = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
       if (hoursUntil < 12) {
         return errorResponse(
@@ -110,34 +127,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Bloquear si ya asistió o no asistió (ya usó su clase de prueba) — por email
-    const { data: closedByEmail } = await supabase
+    // Bloquear si ya asistió (ya usó su clase de prueba) — por email.
+    // Quien no asistió (no_show) sí puede volver a reservar.
+    const { data: attendedByEmail } = await supabase
       .from("reservations")
-      .select("id, status")
+      .select("id")
       .eq("email", cleanEmail)
-      .in("status", ["attended", "no_show"])
+      .eq("status", "attended")
       .maybeSingle();
 
-    if (closedByEmail) {
-      const msg = closedByEmail.status === "attended"
-        ? "Ya asististe a tu clase de prueba en Aquila Evolución. ¡Escribinos por WhatsApp para más info!"
-        : "Ya contábamos con tu lugar en una clase de prueba. Para más info, escribinos por WhatsApp.";
-      return errorResponse(msg, 409);
+    if (attendedByEmail) {
+      return errorResponse(
+        "Ya asististe a tu clase de prueba en Aquila Evolución. ¡Escribinos por WhatsApp para más info!",
+        409
+      );
     }
 
-    // Bloquear si ya asistió o no asistió — por WhatsApp
-    const { data: closedByPhone } = await supabase
+    // Bloquear si ya asistió — por WhatsApp
+    const { data: attendedByPhone } = await supabase
       .from("reservations")
-      .select("id, status")
+      .select("id")
       .eq("whatsapp", whatsapp.trim())
-      .in("status", ["attended", "no_show"])
+      .eq("status", "attended")
       .maybeSingle();
 
-    if (closedByPhone) {
-      const msg = closedByPhone.status === "attended"
-        ? "Este número ya asistió a una clase de prueba. ¡Escribinos por WhatsApp para más info!"
-        : "Este número ya tuvo una clase de prueba reservada. Para más info, escribinos por WhatsApp.";
-      return errorResponse(msg, 409);
+    if (attendedByPhone) {
+      return errorResponse(
+        "Este número ya asistió a una clase de prueba. ¡Escribinos por WhatsApp para más info!",
+        409
+      );
     }
 
     // Bloquear si el email ya tiene reserva activa futura
@@ -189,15 +207,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Si el email tiene una reserva cancelada, reactivarla en lugar de crear un duplicado
-    const { data: cancelled } = await supabase
+    // Si la persona ya tiene una reserva cancelada o no asistida, reactivarla en lugar de crear
+    // un duplicado (en no_show se conserva no_show_count como historial).
+    // La identidad es el email; el WhatsApp nunca se usa para tomar la fila de otra persona.
+    // Si el email coincide pero ni el primer nombre ni el teléfono, es otra persona
+    // (email compartido o mal escrito): se crea una reserva aparte.
+    const { data: previous } = await supabase
       .from("reservations")
-      .select("id")
+      .select("id, name, whatsapp")
       .eq("email", cleanEmail)
-      .eq("status", "cancelled")
+      .in("status", ["cancelled", "no_show"])
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (cancelled) {
+    const newPhone = phoneKey(whatsapp);
+    const reusable =
+      previous &&
+      (firstName(previous.name) === firstName(name) ||
+        (newPhone !== "" && phoneKey(previous.whatsapp) === newPhone))
+        ? previous
+        : null;
+
+    if (reusable) {
       const { data, error } = await getSupabaseAdmin()
         .from("reservations")
         .update({
@@ -209,7 +241,7 @@ export async function POST(request: NextRequest) {
           reminder_24h_sent: false,
           reminder_1h_sent:  false,
         })
-        .eq("id", cancelled.id)
+        .eq("id", reusable.id)
         .select()
         .single();
 
@@ -224,7 +256,7 @@ export async function POST(request: NextRequest) {
           .update({ confirmation_sent: true })
           .eq("id", data.id);
       }
-      return NextResponse.json({ reservation: data }, { status: 201 });
+      return NextResponse.json({ reservation: withoutAdminFields(data) }, { status: 201 });
     }
 
     // Crear reserva nueva
@@ -254,7 +286,7 @@ export async function POST(request: NextRequest) {
         .eq("id", data.id);
     }
 
-    return NextResponse.json({ reservation: data }, { status: 201 });
+    return NextResponse.json({ reservation: withoutAdminFields(data) }, { status: 201 });
   } catch (err) {
     console.error("Error creating reservation:", err);
     return errorResponse("Error al crear la reserva. Intentá de nuevo.", 500);

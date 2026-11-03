@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   BarChart3, Loader2, AlertTriangle, RefreshCw,
   CalendarCheck, XCircle, CheckCircle2, RotateCcw, UserMinus, UserX,
+  GraduationCap, HelpCircle,
 } from "lucide-react";
 import type { Reservation } from "@/lib/supabase";
 import StatusDonut, { type DonutSlice } from "./StatusDonut";
@@ -16,6 +17,9 @@ type Stats = {
   confirmed: number;
   rebookedAfterCancel: number;
   lostAfterCancel: number;
+  enrolled: number;     // asistieron y se inscribieron en Aquila
+  notReturned: number;  // asistieron, probaron y no volvieron
+  undecided: number;    // asistieron y el admin todavía no lo definió
 };
 
 // Una persona = un email. Se considera que "volvió a agendar" si tiene alguna
@@ -48,6 +52,8 @@ function computeStats(reservations: Reservation[]): Stats {
     else lostAfterCancel++;
   }
 
+  const attended = reservations.filter((r) => r.status === "attended");
+
   return {
     total:     reservations.length,
     cancelled: reservations.filter((r) => r.status === "cancelled").length,
@@ -56,6 +62,9 @@ function computeStats(reservations: Reservation[]): Stats {
     confirmed: reservations.filter((r) => r.status === "confirmed").length,
     rebookedAfterCancel,
     lostAfterCancel,
+    enrolled:    attended.filter((r) => r.enrollment === "enrolled").length,
+    notReturned: attended.filter((r) => r.enrollment === "not_returned").length,
+    undecided:   attended.filter((r) => !r.enrollment).length,
   };
 }
 
@@ -67,11 +76,20 @@ const DONUT_COLORS = {
   cancelled: "#e34948",
 } as const;
 
+// Mismos colores del gráfico de arriba, en su orden validado (azul → verde → amarillo,
+// ΔE CVD ≥ 9): sin definir = azul (igual que "sin resolver"), inscripción = verde.
+const ENROLLMENT_COLORS = {
+  undecided:   "#2a78d6",
+  enrolled:    "#1baf7a",
+  notReturned: "#eda100",
+} as const;
+
 type StatCardProps = {
   icon: React.ReactNode;
   label: string;
   value: number;
   tone: "aquila" | "stone" | "emerald" | "amber" | "coral";
+  hint?: string;
 };
 
 const TONES: Record<StatCardProps["tone"], string> = {
@@ -82,7 +100,7 @@ const TONES: Record<StatCardProps["tone"], string> = {
   coral:   "bg-coral-50 border-coral-100 text-coral-600",
 };
 
-function StatCard({ icon, label, value, tone }: StatCardProps) {
+function StatCard({ icon, label, value, tone, hint }: StatCardProps) {
   return (
     <div className={`flex flex-col gap-1 rounded-2xl border px-3 py-3 ${TONES[tone]}`}>
       <div className="flex items-center gap-1.5 opacity-80">
@@ -92,6 +110,7 @@ function StatCard({ icon, label, value, tone }: StatCardProps) {
         </span>
       </div>
       <span className="text-2xl font-bold leading-none">{value}</span>
+      {hint && <span className="text-[10px] font-medium opacity-80 leading-tight">{hint}</span>}
     </div>
   );
 }
@@ -130,6 +149,16 @@ export default function StatsPanel({ password }: Props) {
         { label: "Canceladas",                 value: stats.cancelled, color: DONUT_COLORS.cancelled },
       ]
     : [];
+
+  const enrollmentSlices: DonutSlice[] = stats
+    ? [
+        { label: "Sin definir",             value: stats.undecided,   color: ENROLLMENT_COLORS.undecided   },
+        { label: "Se inscribieron",         value: stats.enrolled,    color: ENROLLMENT_COLORS.enrolled    },
+        { label: "Probaron y no volvieron", value: stats.notReturned, color: ENROLLMENT_COLORS.notReturned },
+      ]
+    : [];
+  const attendedTotal = stats ? stats.enrolled + stats.notReturned + stats.undecided : 0;
+  const enrolledPct   = attendedTotal > 0 && stats ? Math.round((stats.enrolled / attendedTotal) * 100) : 0;
 
   return (
     <div className="bg-white rounded-3xl border border-aquila-100 shadow-card p-5">
@@ -209,6 +238,54 @@ export default function StatsPanel({ password }: Props) {
             cancelaron alguna vez, cuántas volvieron a sacar turno después y
             cuántas no.
           </p>
+
+          <div className="border-t border-aquila-100/70 pt-5 mt-1">
+            <p className="text-xs font-bold text-aquila-700 mb-3 text-center sm:text-left">
+              Después de la clase de prueba
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+              <StatCard
+                icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                label="Asistieron"
+                value={attendedTotal}
+                tone="aquila"
+              />
+              <StatCard
+                icon={<GraduationCap className="w-3.5 h-3.5" />}
+                label="Se inscribieron"
+                value={stats.enrolled}
+                tone="emerald"
+                hint={attendedTotal > 0 ? `${enrolledPct}% de quienes asistieron` : undefined}
+              />
+              <StatCard
+                icon={<UserMinus className="w-3.5 h-3.5" />}
+                label="Probaron y no volvieron"
+                value={stats.notReturned}
+                tone="amber"
+              />
+              <StatCard
+                icon={<HelpCircle className="w-3.5 h-3.5" />}
+                label="Sin definir"
+                value={stats.undecided}
+                tone="stone"
+              />
+            </div>
+
+            {attendedTotal > 0 ? (
+              <StatusDonut unitLabel="asistentes" slices={enrollmentSlices} />
+            ) : (
+              <p className="text-xs text-stone-400 text-center py-4">
+                Todavía no hay personas marcadas como asistidas.
+              </p>
+            )}
+
+            <p className="text-[10px] text-stone-400 leading-relaxed px-1 mt-3">
+              Se marca desde la reserva de cada persona que asistió (filtro
+              &quot;Asistidas&quot;): si se inscribió y sigue en las clases, o si probó y
+              no volvió.
+            </p>
+          </div>
         </div>
       ) : null}
     </div>
