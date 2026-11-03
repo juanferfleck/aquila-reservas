@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDay, parseISO } from "date-fns";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
-import { MAX_PER_SLOT, getSlotsForDay } from "@/lib/constants";
+import { MAX_PER_SLOT, MORNING_SLOT_IDS, getSlotsForDay } from "@/lib/constants";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,7 +91,6 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Verificar que el turno no haya pasado y la regla de 12hs para turnos de mañana
-  const MORNING_SLOTS = ["07:00", "08:00"];
   const slotDateTime = new Date(`${new_date}T${new_time_slot}:00-03:00`);
   const now = new Date();
 
@@ -99,7 +98,7 @@ export async function PATCH(request: NextRequest) {
     return err("Ese turno ya pasó. Por favor elegí otro horario.", 409);
   }
 
-  if (MORNING_SLOTS.includes(new_time_slot)) {
+  if (MORNING_SLOT_IDS.includes(new_time_slot)) {
     const hoursUntil = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     if (hoursUntil < 12) {
       return err(

@@ -84,7 +84,29 @@ function StatusBadge({ status }: { status: Reservation["status"] }) {
 }
 
 type ActionStatus = "confirmed" | "cancelled" | "attended" | "no_show";
+type Enrollment   = NonNullable<Reservation["enrollment"]>;
 type Props = { password: string };
+
+// Qué pasó después de la clase de prueba (solo para quienes asistieron)
+function EnrollmentBadge({ enrollment }: { enrollment: Reservation["enrollment"] }) {
+  if (enrollment === "enrolled")
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">
+        Se inscribió
+      </span>
+    );
+  if (enrollment === "not_returned")
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+        No volvió
+      </span>
+    );
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700">
+      Sin definir
+    </span>
+  );
+}
 
 export default function ReservationsDashboard({ password }: Props) {
   const [filter, setFilter]             = useState<Filter>("upcoming");
@@ -123,7 +145,10 @@ export default function ReservationsDashboard({ password }: Props) {
     fetchReservations(filter);
   }, [filter, fetchReservations]);
 
-  const changeStatus = async (id: string, status: ActionStatus) => {
+  const updateReservation = async (
+    id: string,
+    body: { status?: ActionStatus; enrollment?: Enrollment | null }
+  ) => {
     setActionLoading((prev) => ({ ...prev, [id]: true }));
     try {
       const res = await fetch(`/api/reservations/${id}`, {
@@ -132,18 +157,33 @@ export default function ReservationsDashboard({ password }: Props) {
           "Content-Type": "application/json",
           "x-admin-password": password,
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) return;
 
+      // El servidor también ajusta no_show_count y enrollment según el cambio de estado
+      const { reservation }: { reservation: Reservation } = await res.json();
       setReservations((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status } : r))
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status:        reservation.status,
+                no_show_count: reservation.no_show_count,
+                enrollment:    reservation.enrollment,
+              }
+            : r
+        )
       );
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
+
+  const changeStatus     = (id: string, status: ActionStatus) => updateReservation(id, { status });
+  const changeEnrollment = (id: string, enrollment: Enrollment | null) =>
+    updateReservation(id, { enrollment });
 
   const grouped = reservations.reduce<Record<string, Reservation[]>>((acc, r) => {
     if (!acc[r.date]) acc[r.date] = [];
@@ -254,6 +294,7 @@ export default function ReservationsDashboard({ password }: Props) {
                     reservation={r}
                     isLoading={!!actionLoading[r.id]}
                     onChangeStatus={changeStatus}
+                    onChangeEnrollment={changeEnrollment}
                   />
                 ))}
               </div>
@@ -271,12 +312,17 @@ type CardProps = {
   reservation: Reservation;
   isLoading: boolean;
   onChangeStatus: (id: string, status: ActionStatus) => void;
+  onChangeEnrollment: (id: string, enrollment: Enrollment | null) => void;
 };
 
-function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProps) {
+function ReservationCard({ reservation: r, isLoading, onChangeStatus, onChangeEnrollment }: CardProps) {
   const [expanded, setExpanded] = useState(false);
   const slotLabel  = SLOT_LABELS[r.time_slot] ?? r.time_slot;
   const isPastDate = isPast(parseISO(r.date)) && !isToday(parseISO(r.date));
+  const noShows    = r.no_show_count ?? 0;
+  // Con status no_show, la inasistencia actual ya la dice el badge de estado:
+  // el aviso extra aparece solo si hay otras anteriores.
+  const showNoShowBadge = noShows > (r.status === "no_show" ? 1 : 0);
 
   return (
     <div
@@ -310,6 +356,12 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-bold text-aquila-900 truncate">{r.name}</p>
             <StatusBadge status={r.status} />
+            {r.status === "attended" && <EnrollmentBadge enrollment={r.enrollment} />}
+            {showNoShowBadge && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+                Faltó {noShows} {noShows === 1 ? "vez" : "veces"}
+              </span>
+            )}
           </div>
           <p className="text-xs text-stone-400 mt-0.5">{slotLabel}</p>
         </div>
@@ -347,6 +399,14 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
               <User className="w-3.5 h-3.5 shrink-0" />
               <span>Reservó el {format(parseISO(r.created_at), "d/MM/yy 'a las' HH:mm")}</span>
             </div>
+            {noShows > 0 && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 font-medium">
+                <UserX className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Se anotó y no asistió {noShows} {noShows === 1 ? "vez" : "veces"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Acciones */}
@@ -408,25 +468,64 @@ function ReservationCard({ reservation: r, isLoading, onChangeStatus }: CardProp
                 </button>
               )}
 
-              {/* Asistió: bloqueada definitiva */}
+              {/* Asistió: bloqueada definitiva + qué pasó después de la clase de prueba */}
               {r.status === "attended" && (
-                <p className="text-center text-xs text-stone-400 py-1">
-                  Ya asistió — no puede reservar nuevamente.
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-center text-xs text-stone-400 py-1">
+                    Ya asistió — no puede reservar nuevamente.
+                  </p>
+                  <p className="text-xs font-bold text-aquila-700">
+                    ¿Qué pasó después de la clase de prueba?
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => onChangeEnrollment(r.id, "enrolled")}
+                      className={clsx(
+                        "min-h-[44px] flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95",
+                        r.enrollment === "enrolled"
+                          ? "bg-emerald-600 text-white"
+                          : "border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      )}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      Se inscribió y sigue
+                    </button>
+                    <button
+                      onClick={() => onChangeEnrollment(r.id, "not_returned")}
+                      className={clsx(
+                        "min-h-[44px] flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95",
+                        r.enrollment === "not_returned"
+                          ? "bg-amber-500 text-white"
+                          : "border-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                      )}
+                    >
+                      <UserX className="w-3.5 h-3.5 shrink-0" />
+                      Probó y no volvió
+                    </button>
+                  </div>
+                  {r.enrollment && (
+                    <button
+                      onClick={() => onChangeEnrollment(r.id, null)}
+                      className="min-h-[44px] text-xs font-medium text-stone-400 hover:text-stone-600 underline underline-offset-2 transition-colors"
+                    >
+                      Quitar la marca (volver a sin definir)
+                    </button>
+                  )}
+                </div>
               )}
 
-              {/* No asistió: puede habilitarse para re-agendar */}
+              {/* No asistió: puede volver a reservar sola; el botón corrige una marca equivocada */}
               {r.status === "no_show" && (
                 <div className="flex flex-col gap-2">
                   <p className="text-center text-xs text-stone-400 py-1">
-                    Marcada como inasistencia — no puede reservar nuevamente.
+                    No asistió — puede volver a reservar y se suma a su contador.
                   </p>
                   <button
-                    onClick={() => onChangeStatus(r.id, "cancelled")}
+                    onClick={() => onChangeStatus(r.id, "confirmed")}
                     className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-aquila-300 text-aquila-700 text-xs font-bold hover:bg-aquila-50 transition-all active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    Habilitar para re-agendar
+                    Me equivoqué: volver a confirmada
                   </button>
                 </div>
               )}

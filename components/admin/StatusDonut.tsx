@@ -82,8 +82,8 @@ export default function StatusDonut({ slices, unitLabel }: Props) {
           role="img"
           aria-label={
             total === 0
-              ? "Sin reservas registradas"
-              : `Distribución de ${total} reservas: ` +
+              ? "Sin datos registrados"
+              : `Distribución de ${total} ${unitLabel}: ` +
                 slices.map((s, i) => `${s.label} ${labels[i]}`).join(", ")
           }
         >

@@ -43,13 +43,12 @@ POST /api/reservations
         ├─ ¿Turno ya pasó?            → 409 error
         ├─ ¿Turno mañana < 12hs?      → 409 error
         ├─ ¿Email/tel. en attended?   → 409 bloqueado permanente
-        ├─ ¿Email/tel. en no_show?    → 409 bloqueado permanente
         ├─ ¿Email/tel. con confirmed? → 409 ya tiene turno
         ├─ ¿Cupo completo (≥3)?       → 409 sin cupo
         │
-        ├─ ¿Tiene reserva cancelled?
-        │       └─ SÍ → UPDATE (reactivar) ──────────┐
-        │       └─ NO → INSERT (nueva)                │
+        ├─ ¿Mismo email con reserva cancelled o no_show, y mismo primer nombre o teléfono?
+        │       └─ SÍ → UPDATE (reactivar la misma fila; no_show_count se conserva) ─┐
+        │       └─ NO → INSERT (nueva; el WhatsApp nunca reutiliza la fila de otro)   │
         │                                             │
         └─────────────────────────────────────────────▼
                                           sendConfirmation() → WhatsApp
@@ -116,6 +115,7 @@ Admin en /admin
         │
         ├─ Cambiar estado → PATCH /api/reservations/[id]
         │                   { status: confirmed|cancelled|attended|no_show }
+        │                   y/o { enrollment: enrolled|not_returned|null } (solo si asistió)
         │                   usa service role (bypasea RLS)
         │
         └─ Fechas bloqueadas → GET|POST /api/blocked-dates
@@ -135,8 +135,10 @@ Admin en /admin
 | email               | text      | Email (normalizado a minúsculas)         |
 | whatsapp            | text      | Número de WhatsApp                       |
 | date                | date      | Fecha de la clase (YYYY-MM-DD)           |
-| time_slot           | text      | Horario: 07:00 / 08:00 / 18:00 / 19:00  |
+| time_slot           | text      | Horario: 07:00 / 08:00 / 10:30 / 18:00 / 19:00 |
 | status              | text      | confirmed / cancelled / attended / no_show |
+| no_show_count       | integer   | Veces que se anotó y no asistió (solo admin) |
+| enrollment          | text      | Solo si asistió, solo admin: null (sin definir) / enrolled (se inscribió y sigue) / not_returned (probó y no volvió) |
 | confirmation_sent   | boolean   | ¿Se envió confirmación WA?               |
 | reminder_24h_sent   | boolean   | ¿Se envió recordatorio 24hs?             |
 | reminder_2h_sent    | boolean   | ¿Se envió recordatorio 1hs?              |
@@ -216,10 +218,8 @@ Admin en /admin
               │        definitivo        │                │
               │        bloqueado         │                │
               └──────────────────────────┘                │
-              puede volver a reservar    │                │
-                                         └────────────────┘
-                                    "Habilitar para re-agendar"
-                                    (admin → pasa a cancelled)
+              pueden volver a reservar (misma fila)       │
+              no_show: suma 1 a no_show_count ────────────┘
 ```
 
 ---
@@ -227,8 +227,9 @@ Admin en /admin
 ## Reglas de negocio
 
 - **Cupo máximo:** 3 personas por turno
-- **Anticipación mínima:** 12 horas para turnos de mañana (7:00 y 8:00)
-- **Clase de prueba única:** bloqueado si ya tiene `attended` o `no_show`
+- **Anticipación mínima:** 12 horas para turnos de mañana (7:00, 8:00 y 10:30)
+- **Clase de prueba única:** bloqueado si ya tiene `attended`
+- **No asistió (`no_show`):** puede volver a reservar. Se reutiliza su misma fila (una sola por persona) y `no_show_count` guarda cuántas veces faltó. Solo lo ve el admin. La identidad es el **email**: la fila se reutiliza solo si coincide el email y además el primer nombre (sin tildes ni mayúsculas) o el teléfono (últimos 10 dígitos); si no, es otra persona y se crea una fila aparte. El WhatsApp nunca toma la fila de otra persona
 - **Zona horaria:** Argentina UTC-3, sin horario de verano
 - **Domingos:** sin clases (deshabilitados en el calendario)
 - **Sábados:** solo turno de 8:00

@@ -54,3 +54,30 @@ CREATE POLICY "Leer días bloqueados" ON public.blocked_dates
 
 -- Escritura solo desde el service role (panel de admin)
 -- Las operaciones de admin usan la service_role key que bypasea RLS
+
+-- =====================================================
+-- Contador de inasistencias (solo lo ve el admin)
+-- Una persona = una sola fila: si no asiste y vuelve a reservar,
+-- se reutiliza la misma fila y este contador queda como historial.
+-- Es seguro correrlo más de una vez.
+-- =====================================================
+
+ALTER TABLE public.reservations
+  ADD COLUMN IF NOT EXISTS no_show_count INTEGER NOT NULL DEFAULT 0;
+
+-- Las inasistencias ya registradas antes de este cambio cuentan como 1
+UPDATE public.reservations
+  SET no_show_count = 1
+  WHERE status = 'no_show' AND no_show_count = 0;
+
+-- =====================================================
+-- Seguimiento de quienes asistieron a la clase de prueba (solo admin)
+--   NULL         → sin definir
+--   enrolled     → se inscribió en Aquila y sigue en las clases
+--   not_returned → probó y no volvió
+-- Es seguro correrlo más de una vez.
+-- =====================================================
+
+ALTER TABLE public.reservations
+  ADD COLUMN IF NOT EXISTS enrollment TEXT
+  CHECK (enrollment IN ('enrolled', 'not_returned'));
