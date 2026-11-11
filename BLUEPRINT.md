@@ -198,6 +198,8 @@ Admin en /admin
 | ADMIN_PASSWORD                | Contraseña del panel admin           |
 | YCLOUD_API_KEY                | API key de YCloud (Developers → API Keys) |
 | YCLOUD_WHATSAPP_FROM          | Número WhatsApp Business en YCloud: +5493764114013 |
+| INBOX_INGEST_URL              | (opcional) `https://<dominio-whatsapp-saas>/api/internal/outbound-message`. Tras cada plantilla enviada se le avisa al inbox para que el agente de IA conozca el mensaje |
+| INBOX_INGEST_SECRET           | (opcional) Mismo valor que `OUTBOUND_INGEST_SECRET` en whatsapp-saas. Si falta alguna de las dos, no se avisa |
 | CRON_SECRET                   | Clave para autenticar cron-job.org   |
 
 ---

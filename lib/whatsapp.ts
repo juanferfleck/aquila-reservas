@@ -26,6 +26,85 @@ function slotLabel(timeSlot: string): string {
 // Número de WhatsApp Business de Aquila Evolución registrado en YCloud (E.164)
 const YCLOUD_FROM = process.env.YCLOUD_WHATSAPP_FROM || "+5493764114013";
 
+// ── Texto de cada plantilla ───────────────────────────────────
+// Copia del cuerpo aprobado en Meta/YCloud. Se usa SOLO para avisarle al inbox
+// (whatsapp-saas) qué recibió el cliente, así el agente de IA tiene el contexto
+// cuando la persona responde. Si cambiás una plantilla en Meta, actualizá
+// también su texto acá.
+const TEMPLATE_BODIES: Record<string, string> = {
+  aquila_confirmacion:
+    "¡Hola {{1}}! 🦅 Tu clase de prueba en *Aquila Evolución* está confirmada para el {{2}} a las {{3}} ✅\n\n" +
+    "Acordate de traer:\n💧 Una botellita de agua (la podés cargar acá)\n🏃 Una toalla personal\n\n" +
+    "📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8\n\n" +
+    "⚠️ ¿No podés venir? Cancelá o cambiá el día en reserva.aquilaevo.com, o avisanos por acá. " +
+    "Si no avisás, no podrás reprogramar la clase gratis y la próxima se abona.\n\n" +
+    "¡Te esperamos con todo listo!",
+  aquila_recordatorio_24h:
+    "¡Hola {{1}}! 🦅 Mañana {{2}} a las {{3}} es tu clase de prueba en *Aquila Evolución* 💪\n\n" +
+    "Recordá traer:\n💧 Tu botellita de agua (la podés cargar acá)\n🏃 Una toalla personal\n\n" +
+    "📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8\n\n" +
+    "⚠️ ¿No podés venir? Cancelá o cambiá el día en reserva.aquilaevo.com, o avisanos por acá. " +
+    "Si no avisás, no podrás reprogramar la clase gratis y la próxima se abona.\n\n" +
+    "¡Nos vemos mañana!",
+  aquila_recordatorio_1h:
+    "¡Hola {{1}}! 🦅 En un rato ({{2}}) arranca tu clase de prueba en *Aquila Evolución* ⚡\n\n" +
+    "Revisá que tenés:\n💧 Tu botellita de agua\n🏃 Tu toalla personal\n\n" +
+    "📍 Cómo llegar: https://maps.app.goo.gl/9ADdfsjJHKZBRGch8\n\n" +
+    "⚠️ ¿No podés venir? Avisanos por acá cuanto antes así no perdés la clase gratis 🙏\n\n" +
+    "¡Ya falta poquito, te esperamos! 💪",
+};
+
+function fillTemplate(templateName: string, params: string[]): string | null {
+  const body = TEMPLATE_BODIES[templateName];
+  if (!body) return null;
+  return body.replace(/\{\{(\d+)\}\}/g, (_, n) => params[Number(n) - 1] ?? "");
+}
+
+// ── Aviso al inbox (whatsapp-saas) ────────────────────────────
+// Este sistema manda las plantillas directo a YCloud, así que whatsapp-saas no
+// se entera. Sin este aviso el agente de IA no ve el mensaje y, si el cliente
+// contesta "gracias", responde sin contexto.
+// Nunca debe romper la reserva ni el cron: cualquier falla se loguea y se sigue.
+// Si falla, whatsapp-saas igual registra el mensaje (con variables sin completar)
+// cuando YCloud le notifica la entrega por webhook.
+async function notifyInbox(args: {
+  to: string;
+  wamid: string;
+  templateName: string;
+  text: string;
+  name: string;
+}): Promise<void> {
+  const url = process.env.INBOX_INGEST_URL;
+  const secret = process.env.INBOX_INGEST_SECRET;
+  if (!url || !secret) return; // no configurado → comportamiento anterior
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secret}`,
+      },
+      signal: AbortSignal.timeout(5000),
+      body: JSON.stringify({
+        from: YCLOUD_FROM,
+        to: formatPhone(args.to),
+        wamid: args.wamid,
+        template_name: args.templateName,
+        text: args.text,
+        contact_name: args.name,
+        source: "reservas",
+        sent_at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      console.error(`Inbox ingest "${args.templateName}" respondió ${res.status}`);
+    }
+  } catch (err) {
+    console.error("Inbox ingest error:", err);
+  }
+}
+
 async function sendTemplate(
   to: string,
   templateName: string,
@@ -74,6 +153,19 @@ async function sendTemplate(
     }
 
     console.log(`WhatsApp template "${templateName}" enviado a ${formatPhone(to)}:`, JSON.stringify(resBody));
+
+    // Avisar al inbox para que el agente conozca el mensaje. Sin wamid no hay
+    // forma de deduplicar, así que en ese caso se omite (lo cubre el webhook).
+    const text = fillTemplate(templateName, params);
+    if (text && typeof resBody.wamid === "string" && resBody.wamid) {
+      await notifyInbox({
+        to,
+        wamid: resBody.wamid,
+        templateName,
+        text,
+        name: params[0] ?? "",
+      });
+    }
     return true;
   } catch (err) {
     console.error("WhatsApp fetch error:", err);
