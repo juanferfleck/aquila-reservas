@@ -69,7 +69,9 @@ function fillTemplate(templateName: string, params: string[]): string | null {
 // cuando YCloud le notifica la entrega por webhook.
 async function notifyInbox(args: {
   to: string;
-  wamid: string;
+  /** `id` que YCloud devuelve al enviar. El wamid de WhatsApp NO viene en esa respuesta. */
+  ycloudId: string;
+  wamid?: string;
   templateName: string;
   text: string;
   name: string;
@@ -89,7 +91,8 @@ async function notifyInbox(args: {
       body: JSON.stringify({
         from: YCLOUD_FROM,
         to: formatPhone(args.to),
-        wamid: args.wamid,
+        ycloud_id: args.ycloudId || undefined,
+        wamid: args.wamid || undefined,
         template_name: args.templateName,
         text: args.text,
         contact_name: args.name,
@@ -154,13 +157,18 @@ async function sendTemplate(
 
     console.log(`WhatsApp template "${templateName}" enviado a ${formatPhone(to)}:`, JSON.stringify(resBody));
 
-    // Avisar al inbox para que el agente conozca el mensaje. Sin wamid no hay
-    // forma de deduplicar, así que en ese caso se omite (lo cubre el webhook).
+    // Avisar al inbox para que el agente conozca el mensaje. YCloud responde con
+    // su `id` pero todavía sin `wamid` (lo asigna después y lo informa por
+    // webhook), así que se identifica el mensaje por `id`; whatsapp-saas completa
+    // el wamid cuando le llega el primer estado.
     const text = fillTemplate(templateName, params);
-    if (text && typeof resBody.wamid === "string" && resBody.wamid) {
+    const ycloudId = typeof resBody.id === "string" ? resBody.id : "";
+    const wamid = typeof resBody.wamid === "string" ? resBody.wamid : "";
+    if (text && (ycloudId || wamid)) {
       await notifyInbox({
         to,
-        wamid: resBody.wamid,
+        ycloudId,
+        wamid,
         templateName,
         text,
         name: params[0] ?? "",
