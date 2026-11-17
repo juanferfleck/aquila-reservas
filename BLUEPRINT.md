@@ -173,6 +173,7 @@ Admin en /admin
 | POST   | /api/blocked-dates              | admin header  | Agrega fecha bloqueada             |
 | DELETE | /api/blocked-dates/[date]       | admin header  | Elimina fecha bloqueada            |
 | GET    | /api/cron/reminders             | CRON_SECRET   | Dispara recordatorios WA           |
+| GET    | /api/seguimiento                | SEGUIMIENTO_SECRET (solo `Authorization: Bearer`) | Lista de quienes asistieron y aún no figuran inscriptos (nombre, WhatsApp, fecha, horario; sin email). Solo lectura, para los recordatorios de seguimiento. Param opcional `dias` (35 por defecto, máx. 60) |
 
 ---
 
@@ -201,6 +202,7 @@ Admin en /admin
 | INBOX_INGEST_URL              | (opcional) `https://<dominio-whatsapp-saas>/api/internal/outbound-message`. Tras cada plantilla enviada se le avisa al inbox para que el agente de IA conozca el mensaje |
 | INBOX_INGEST_SECRET           | (opcional) Mismo valor que `OUTBOUND_INGEST_SECRET` en whatsapp-saas. Si falta alguna de las dos, no se avisa |
 | CRON_SECRET                   | Clave para autenticar cron-job.org   |
+| SEGUIMIENTO_SECRET            | Clave de `/api/seguimiento` (rutina diaria de seguimiento). Solo da acceso a esa lista, no al resto del sistema |
 
 ---
 
